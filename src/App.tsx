@@ -1,13 +1,13 @@
 import { useAppState } from './hooks/useAppState'
 import { useDisplayMode } from './hooks/useDisplayMode'
 import { WeeklyPlan } from './components/WeeklyPlan'
-import { InventoryPanel } from './components/InventoryPanel'
+import { ShoppingMemoPanel } from './components/ShoppingMemoPanel'
 import { RecipeSearch } from './components/RecipeSearch'
 import { InstallAppBanner } from './components/InstallAppBanner'
 import { DisplayModeToggle } from './components/DisplayModeToggle'
 import { useState } from 'react'
 
-type Tab = 'plan' | 'inventory' | 'search'
+type Tab = 'plan' | 'shopping' | 'search'
 
 type SearchEntry = {
   token: number
@@ -20,7 +20,7 @@ export type GoSearchOptions = {
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'plan', label: '週間献立', icon: '📅' },
-  { id: 'inventory', label: '在庫', icon: '🥬' },
+  { id: 'shopping', label: '買い物メモ', icon: '🛒' },
   { id: 'search', label: 'レシピ検索', icon: '🔍' },
 ]
 
@@ -99,7 +99,7 @@ export default function App() {
                 <button
                   key={t.id}
                   onClick={() => selectTab(t.id)}
-                  className={`flex-1 rounded-xl px-3 py-3 text-base font-medium transition-all ${
+                  className={`flex-1 rounded-xl px-2 py-3 text-sm font-medium transition-all min-[400px]:px-3 min-[400px]:text-base ${
                     tab === t.id
                       ? 'bg-orange-500 text-white shadow-md'
                       : 'text-gray-600 hover:bg-orange-50'
@@ -115,8 +115,8 @@ export default function App() {
             <div className={tab === 'plan' ? '' : 'hidden'}>
               <WeeklyPlan app={app} onGoSearch={goSearch} />
             </div>
-            <div className={tab === 'inventory' ? '' : 'hidden'}>
-              <InventoryPanel app={app} />
+            <div className={tab === 'shopping' ? '' : 'hidden'}>
+              <ShoppingMemoPanel app={app} onGoPlan={goPlan} />
             </div>
             <div className={tab === 'search' ? '' : 'hidden'}>
               <RecipeSearch

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AppState, DishRole, Genre, InventoryItem, MealType, Recipe } from '../types'
+import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, Recipe } from '../types'
 import { DISH_ROLES, GENRES } from '../types'
 import { loadState, saveState } from '../lib/storage'
 import { resolveRecipe } from '../lib/recipeResolver'
-import { generateWeeklyPlan, getCandidateRecipes, getRecipeDuplicateKey } from '../lib/mealPlanner'
+import { generateWeeklyPlan, getCandidateRecipes, getRecipeDuplicateKey, ingredientMatch } from '../lib/mealPlanner'
+import { buildPlanShoppingItems, isShoppingChecked, toggleCheckedName } from '../lib/shoppingList'
 
 export function useAppState() {
   const [state, setState] = useState<AppState>(() => loadState())
@@ -40,6 +41,80 @@ export function useAppState() {
         i.id === id ? { ...i, wantToUse: !i.wantToUse } : i
       ),
     }))
+  }, [])
+
+  const toggleShoppingChecked = useCallback((name: string) => {
+    setState((prev) => ({
+      ...prev,
+      shoppingCheckedNames: toggleCheckedName(name, prev.shoppingCheckedNames),
+    }))
+  }, [])
+
+  const addExtraShoppingItem = useCallback((name: string) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    setState((prev) => {
+      const planItems = buildPlanShoppingItems(prev)
+      if (planItems.some((item) => ingredientMatch(item.name, trimmed))) return prev
+      if (prev.extraShoppingItems.some((item) => ingredientMatch(item.name, trimmed))) {
+        return prev
+      }
+      const item: ExtraShoppingItem = {
+        id: crypto.randomUUID(),
+        name: trimmed,
+        checked: false,
+      }
+      return { ...prev, extraShoppingItems: [...prev.extraShoppingItems, item] }
+    })
+  }, [])
+
+  const toggleExtraShoppingChecked = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      extraShoppingItems: prev.extraShoppingItems.map((item) =>
+        item.id === id ? { ...item, checked: !item.checked } : item
+      ),
+    }))
+  }, [])
+
+  const removeExtraShoppingItem = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      extraShoppingItems: prev.extraShoppingItems.filter((item) => item.id !== id),
+    }))
+  }, [])
+
+  const moveCheckedShoppingToInventory = useCallback(() => {
+    setState((prev) => {
+      const inventory = [...prev.inventory]
+      const addIfMissing = (name: string) => {
+        if (inventory.some((i) => ingredientMatch(i.name, name))) return
+        inventory.push({
+          id: crypto.randomUUID(),
+          name,
+          wantToUse: false,
+        })
+      }
+
+      for (const item of buildPlanShoppingItems(prev)) {
+        if (isShoppingChecked(item.name, prev.shoppingCheckedNames)) {
+          addIfMissing(item.name)
+        }
+      }
+
+      const extraShoppingItems = prev.extraShoppingItems.filter((item) => {
+        if (!item.checked) return true
+        addIfMissing(item.name)
+        return false
+      })
+
+      return {
+        ...prev,
+        inventory,
+        extraShoppingItems,
+        shoppingCheckedNames: [],
+      }
+    })
   }, [])
 
   const toggleFavorite = useCallback((recipeId: string) => {
@@ -390,6 +465,11 @@ export function useAppState() {
     addInventoryItem,
     removeInventoryItem,
     toggleInventoryWantToUse,
+    toggleShoppingChecked,
+    addExtraShoppingItem,
+    toggleExtraShoppingChecked,
+    removeExtraShoppingItem,
+    moveCheckedShoppingToInventory,
     toggleFavorite,
     togglePreferredGenre,
     toggleDayGenre,

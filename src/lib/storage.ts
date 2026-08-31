@@ -11,6 +11,8 @@ const defaultState: AppState = {
   dayDisabledGenres: {},
   weekStartDate: formatLocalDateKey(getSunday(new Date())),
   dayShoppingNotes: {},
+  shoppingCheckedNames: [],
+  extraShoppingItems: [],
   dayPrepNotes: {},
   dayRiceIncluded: {},
   customRecipes: [],
@@ -75,6 +77,23 @@ export function loadState(): AppState {
       (s) => s && typeof s === 'object' && 'id' in s && 'recipeId' in s && 'dishRole' in s
     )
     parsed.dayShoppingNotes = parsed.dayShoppingNotes ?? {}
+    parsed.shoppingCheckedNames = Array.isArray(parsed.shoppingCheckedNames)
+      ? parsed.shoppingCheckedNames.filter((n) => typeof n === 'string' && n.trim())
+      : []
+    parsed.extraShoppingItems = (parsed.extraShoppingItems ?? [])
+      .filter(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          typeof item.id === 'string' &&
+          typeof item.name === 'string' &&
+          item.name.trim().length > 0
+      )
+      .map((item) => ({
+        id: item.id,
+        name: item.name.trim(),
+        checked: Boolean(item.checked),
+      }))
     parsed.dayPrepNotes = parsed.dayPrepNotes ?? {}
     parsed.dayRiceIncluded = parsed.dayRiceIncluded ?? {}
     parsed.customRecipes = (parsed.customRecipes ?? []).filter(

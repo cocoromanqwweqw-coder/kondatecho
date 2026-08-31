@@ -90,6 +90,13 @@ export interface InventoryItem {
   wantToUse: boolean
 }
 
+/** 買い物メモに手で足した行 */
+export interface ExtraShoppingItem {
+  id: string
+  name: string
+  checked: boolean
+}
+
 /** 1スロット＝曜日×食事×役割 */
 export interface PlannedMeal {
   dayIndex: number
@@ -120,6 +127,10 @@ export interface AppState {
   weekStartDate: string
   /** 曜日ごとの買い物メモ */
   dayShoppingNotes: Partial<Record<number, string>>
+  /** 献立から出した買い物リストでチェックした食材名 */
+  shoppingCheckedNames: string[]
+  /** 買い物リストへの手入力 */
+  extraShoppingItems: ExtraShoppingItem[]
   /** 曜日ごとの下ごしらえ・作り置きメモ */
   dayPrepNotes: Partial<Record<number, string>>
   /** 曜日ごとのご飯をカロリーに含めるか（未設定時は献立から自動判定） */
