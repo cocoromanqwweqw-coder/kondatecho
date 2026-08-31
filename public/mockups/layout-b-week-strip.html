@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>案B：週間サマリー帯型</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: #1f2937;
+      padding: 12px;
+      max-width: 430px;
+      margin: 0 auto;
+    }
+    .badge {
+      display: inline-block;
+      background: #0ea5e9;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    .desc { font-size: 12px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; }
+
+    .panel {
+      background: linear-gradient(180deg, #fff7ed, #fff);
+      border: 1px solid #fed7aa;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 4px 16px rgba(249,115,22,.08);
+    }
+    .panel-title { font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 10px; }
+
+    /* 週間サマリー帯 */
+    .week-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .day-pill {
+      background: white;
+      border: 1px solid #ffedd5;
+      border-radius: 10px;
+      padding: 6px 2px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .day-pill.active {
+      border-color: #fb923c;
+      background: #fff7ed;
+      box-shadow: 0 0 0 2px #fed7aa;
+    }
+    .day-pill .name { font-size: 12px; font-weight: 700; color: #374151; }
+    .day-pill.active .name { color: #ea580c; }
+    .day-pill .date { font-size: 8px; color: #9ca3af; display: block; margin-top: 1px; }
+    .dots { display: flex; justify-content: center; gap: 2px; margin-top: 4px; }
+    .dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #e5e7eb;
+    }
+    .dot.on { background: #f97316; }
+    .dot.on.green { background: #10b981; }
+
+    /* 選択日フォーカス */
+    .focus {
+      background: white;
+      border: 1px solid #fdba74;
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .focus-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #ffedd5;
+    }
+    .focus-head h2 { font-size: 16px; color: #ea580c; }
+    .focus-head span { font-size: 11px; color: #6b7280; }
+    .focus-slots { display: flex; flex-direction: column; gap: 6px; }
+    .big-slot {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px dashed #d1d5db;
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-height: 52px;
+      background: #fafafa;
+    }
+    .big-slot.filled { border-style: solid; border-color: #fdba74; background: white; }
+    .big-slot.selected {
+      border-color: #f59e0b;
+      background: #fffbeb;
+      box-shadow: inset 0 0 0 1px #fcd34d;
+    }
+    .big-slot .icon { font-size: 20px; }
+    .big-slot .info { flex: 1; }
+    .big-slot .role { font-size: 10px; color: #9ca3af; }
+    .big-slot .name { font-size: 14px; font-weight: 600; }
+    .big-slot .empty { font-size: 13px; color: #d1d5db; }
+
+    /* 候補 */
+    .candidates {
+      background: white;
+      border: 1px solid #ffedd5;
+      border-radius: 14px;
+      padding: 12px;
+    }
+    .candidates h3 { font-size: 13px; margin-bottom: 8px; }
+    .candidate {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 6px;
+      background: #f9fafb;
+    }
+    .thumb {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #fed7aa, #fdba74);
+      flex-shrink: 0;
+    }
+    .candidate .info { flex: 1; }
+    .candidate strong { font-size: 13px; display: block; }
+    .candidate span { font-size: 11px; color: #6b7280; }
+    .add-btn {
+      background: #f97316; color: white; border: none;
+      border-radius: 10px; padding: 8px 14px;
+      font-size: 12px; font-weight: 700;
+    }
+
+    .compare {
+      margin-top: 16px;
+      padding: 12px;
+      background: #e0f2fe;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #0c4a6e;
+    }
+    .compare strong { color: #0369a1; }
+    .pros { margin-top: 12px; font-size: 12px; line-height: 1.6; }
+    .pros li { margin-left: 18px; }
+  </style>
+</head>
+<body>
+  <span class="badge">案B · 週間サマリー帯型</span>
+  <h1>上に7日サマリー、下に編集</h1>
+  <p class="desc">1週間の進捗を上の帯で一覧。選んだ1日だけ大きく編集。スクロールが少ない。</p>
+
+  <div class="panel">
+    <div class="panel-title">1週間の夜ごはん</div>
+
+    <!-- 7日サマリー帯 -->
+    <div class="week-strip">
+      <div class="day-pill">
+        <div class="name">日</div>
+        <span class="date">8/3</span>
+        <div class="dots"><span class="dot on green"></span><span class="dot on green"></span><span class="dot on green"></span></div>
+      </div>
+      <div class="day-pill">
+        <div class="name">月</div>
+        <span class="date">8/4</span>
+        <div class="dots"><span class="dot on green"></span><span class="dot on green"></span><span class="dot on green"></span></div>
+      </div>
+      <div class="day-pill active">
+        <div class="name">火</div>
+        <span class="date">8/5</span>
+        <div class="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+      <div class="day-pill">
+        <div class="name">水</div>
+        <span class="date">8/6</span>
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+      <div class="day-pill">
+        <div class="name">木</div>
+        <span class="date">8/7</span>
+        <div class="dots"><span class="dot on"></span><span class="dot on"></span><span class="dot"></span></div>
+      </div>
+      <div class="day-pill">
+        <div class="name">金</div>
+        <span class="date">8/8</span>
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+      <div class="day-pill">
+        <div class="name">土</div>
+        <span class="date">8/9</span>
+        <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      </div>
+    </div>
+
+    <!-- 選択日フォーカス -->
+    <div class="focus">
+      <div class="focus-head">
+        <h2>火曜 8/5</h2>
+        <span>1/3 配置済 · 主菜を選択中</span>
+      </div>
+      <div class="focus-slots">
+        <div class="big-slot filled">
+          <span class="icon">🍚</span>
+          <div class="info"><div class="role">主食</div><div class="name">ごはん</div></div>
+        </div>
+        <div class="big-slot selected">
+          <span class="icon">🍖</span>
+          <div class="info"><div class="role">主菜 · 選択中</div><div class="empty">タップして候補から選ぶ</div></div>
+        </div>
+        <div class="big-slot">
+          <span class="icon">🥗</span>
+          <div class="info"><div class="role">副菜</div><div class="empty">空</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="candidates">
+    <h3>候補 → 火・主菜</h3>
+    <div class="candidate">
+      <div class="thumb"></div>
+      <div class="info"><strong>鶏の照り焼き</strong><span>和食 · 25分</span></div>
+      <button class="add-btn">追加</button>
+    </div>
+    <div class="candidate">
+      <div class="thumb"></div>
+      <div class="info"><strong>豚の生姜焼き</strong><span>和食 · 20分</span></div>
+      <button class="add-btn">追加</button>
+    </div>
+    <div class="candidate">
+      <div class="thumb"></div>
+      <div class="info"><strong>麻婆豆腐</strong><span>中華 · 15分</span></div>
+      <button class="add-btn">追加</button>
+    </div>
+  </div>
+
+  <div class="compare">
+    <strong>案Aとの違い</strong><br>
+    Aは7日すべて展開。Bは上の帯で週全体を把握し、編集は1日分だけ大きく表示。スクロール量が半分以下。
+  </div>
+
+  <ul class="pros">
+    <li>7日分の進捗が常に画面上部に見える</li>
+    <li>編集スロットが大きく、タップしやすい</li>
+    <li>候補パネルまで近い（1画面に収まりやすい）</li>
+  </ul>
+</body>
+</html>

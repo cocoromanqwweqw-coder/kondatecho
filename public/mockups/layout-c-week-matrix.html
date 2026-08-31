@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>案C：週間マトリクス型</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: #1f2937;
+      padding: 12px;
+      max-width: 430px;
+      margin: 0 auto;
+    }
+    .badge {
+      display: inline-block;
+      background: #8b5cf6;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+    }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    .desc { font-size: 12px; color: #6b7280; margin-bottom: 16px; line-height: 1.5; }
+
+    .panel {
+      background: white;
+      border: 1px solid #fed7aa;
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: 0 4px 16px rgba(249,115,22,.08);
+    }
+    .panel-title { font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+
+    /* 21マスマトリクス */
+    .matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .matrix {
+      display: grid;
+      grid-template-columns: 28px repeat(7, minmax(44px, 1fr));
+      gap: 3px;
+      min-width: 340px;
+    }
+    .corner { }
+    .col-head {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      padding: 4px 0;
+    }
+    .col-head.active { color: #ea580c; }
+    .col-head span { display: block; font-size: 8px; font-weight: 400; color: #9ca3af; }
+    .row-head {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #9ca3af;
+    }
+    .cell {
+      aspect-ratio: 1;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      text-align: center;
+      line-height: 1.1;
+      padding: 2px;
+      background: #fafafa;
+      color: #9ca3af;
+      cursor: pointer;
+    }
+    .cell.filled {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }
+    .cell.selected {
+      background: #fffbeb;
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 2px #fcd34d;
+      color: #b45309;
+    }
+    .cell.empty::after { content: '＋'; font-size: 12px; color: #d1d5db; }
+
+    .week-stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #f3f4f6;
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .week-stats em { font-style: normal; font-weight: 700; color: #ea580c; }
+
+    /* ボトムシート */
+    .sheet {
+      margin-top: 12px;
+      background: white;
+      border: 1px solid #e9d5ff;
+      border-radius: 16px 16px 0 0;
+      padding: 14px 12px;
+      box-shadow: 0 -4px 20px rgba(139,92,246,.1);
+    }
+    .sheet-handle {
+      width: 36px; height: 4px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      margin: 0 auto 12px;
+    }
+    .sheet-title { font-size: 14px; font-weight: 700; color: #7c3aed; }
+    .sheet-sub { font-size: 11px; color: #6b7280; margin: 2px 0 12px; }
+
+    .selected-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .selected-preview .icon { font-size: 24px; }
+    .selected-preview .label { font-size: 12px; color: #7c3aed; font-weight: 700; }
+    .selected-preview .hint { font-size: 11px; color: #6b7280; }
+
+    .candidate-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 8px 6px;
+      text-align: center;
+      background: #f9fafb;
+    }
+    .card-thumb {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #fed7aa, #fdba74);
+      margin-bottom: 6px;
+    }
+    .card strong { font-size: 10px; display: block; line-height: 1.2; }
+    .card span { font-size: 8px; color: #6b7280; }
+    .card button {
+      margin-top: 6px;
+      width: 100%;
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .compare {
+      margin-top: 16px;
+      padding: 12px;
+      background: #f5f3ff;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #5b21b6;
+    }
+    .compare strong { color: #7c3aed; }
+    .pros { margin-top: 12px; font-size: 12px; line-height: 1.6; }
+    .pros li { margin-left: 18px; }
+  </style>
+</head>
+<body>
+  <span class="badge">案C · 週間マトリクス型</span>
+  <h1>21マスで一週間が一覧</h1>
+  <p class="desc">7日×3品=21マスのマトリクス。最小スペースで週全体を俯瞰。タップで候補。</p>
+
+  <div class="panel">
+    <div class="panel-title">1週間の夜ごはん</div>
+    <div class="matrix-wrap">
+      <div class="matrix">
+        <!-- ヘッダー行 -->
+        <div class="corner"></div>
+        <div class="col-head">日<span>8/3</span></div>
+        <div class="col-head">月<span>8/4</span></div>
+        <div class="col-head active">火<span>8/5</span></div>
+        <div class="col-head">水<span>8/6</span></div>
+        <div class="col-head">木<span>8/7</span></div>
+        <div class="col-head">金<span>8/8</span></div>
+        <div class="col-head">土<span>8/9</span></div>
+
+        <!-- 主食行 -->
+        <div class="row-head">🍚</div>
+        <div class="cell filled">ごはん</div>
+        <div class="cell filled">ごはん</div>
+        <div class="cell filled">ごはん</div>
+        <div class="cell empty"></div>
+        <div class="cell filled">パスタ</div>
+        <div class="cell empty"></div>
+        <div class="cell empty"></div>
+
+        <!-- 主菜行 -->
+        <div class="row-head">🍖</div>
+        <div class="cell filled">鮭</div>
+        <div class="cell filled">ハンバーグ</div>
+        <div class="cell selected">選択中</div>
+        <div class="cell empty"></div>
+        <div class="cell filled">チキン</div>
+        <div class="cell empty"></div>
+        <div class="cell empty"></div>
+
+        <!-- 副菜行 -->
+        <div class="row-head">🥗</div>
+        <div class="cell filled">味噌汁</div>
+        <div class="cell filled">サラダ</div>
+        <div class="cell empty"></div>
+        <div class="cell empty"></div>
+        <div class="cell empty"></div>
+        <div class="cell empty"></div>
+        <div class="cell empty"></div>
+      </div>
+    </div>
+    <div class="week-stats">
+      <span>配置済 <em>9</em>/21</span>
+      <span>完了日 <em>2</em>/7</span>
+      <span>空き <em>12</em>マス</span>
+    </div>
+  </div>
+
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="selected-preview">
+      <span class="icon">🍖</span>
+      <div>
+        <div class="label">火曜 · 主菜</div>
+        <div class="hint">下の候補をタップして配置</div>
+      </div>
+    </div>
+    <div class="candidate-cards">
+      <div class="card">
+        <div class="card-thumb"></div>
+        <strong>照り焼き</strong>
+        <span>25分</span>
+        <button>＋</button>
+      </div>
+      <div class="card">
+        <div class="card-thumb"></div>
+        <strong>生姜焼き</strong>
+        <span>20分</span>
+        <button>＋</button>
+      </div>
+      <div class="card">
+        <div class="card-thumb"></div>
+        <strong>麻婆豆腐</strong>
+        <span>15分</span>
+        <button>＋</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <strong>案Aとの違い</strong><br>
+    Aは日ごとに3スロットを縦に7回繰り返す。Cは21マスを1つの表にまとめ、週全体を最小面積で俯瞰。空きマスが一目瞭然。
+  </div>
+
+  <ul class="pros">
+    <li>最もコンパクトな「一週間一覧」</li>
+    <li>「主菜が空いてる曜日」が横に見渡せる</li>
+    <li>候補はカード3列でサッと選べる</li>
+  </ul>
+</body>
+</html>

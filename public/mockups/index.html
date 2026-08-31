@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>レイアウト候補一覧</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fff7ed;
+      color: #1f2937;
+      padding: 20px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; margin-bottom: 8px; color: #c2410c; }
+    p { font-size: 14px; color: #6b7280; margin-bottom: 20px; line-height: 1.5; }
+    a {
+      display: block;
+      background: white;
+      border: 1px solid #fed7aa;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 10px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 2px 8px rgba(249,115,22,.08);
+    }
+    a:active { background: #ffedd5; }
+    a.keep { border-color: #fb923c; background: #fff7ed; }
+    a strong { display: block; font-size: 16px; color: #ea580c; margin-bottom: 4px; }
+    a span { font-size: 13px; color: #6b7280; }
+    a em { font-size: 11px; color: #f97316; font-style: normal; font-weight: 700; }
+    .back { margin-top: 24px; text-align: center; }
+    .back a {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #f97316;
+      color: white;
+      font-weight: 700;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🍳 レイアウト候補</h1>
+  <p>案Aをベースに、B・Cを作り直しました。タップして確認してください。</p>
+
+  <a href="./layout-a-week-list.html" class="keep">
+    <strong>案A · 週リスト型</strong>
+    <em>← 採用候補（そのまま）</em>
+    <span>7日を縦に並べる。各行に3スロット。スマホ向き。</span>
+  </a>
+  <a href="./layout-b-week-strip.html">
+    <strong>案B · 週間サマリー帯型</strong>
+    <span>上に7日の進捗ドット、下に選択日を大きく編集。スクロール少なめ。</span>
+  </a>
+  <a href="./layout-c-week-matrix.html">
+    <strong>案C · 週間マトリクス型</strong>
+    <span>21マス（7日×3品）の表。最もコンパクトな週間一覧。</span>
+  </a>
+
+  <div class="back">
+    <a href="/">← アプリに戻る</a>
+  </div>
+</body>
+</html>
