@@ -1,64 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- 白地・角丸 -->
-  <rect width="512" height="512" rx="114" fill="#ffffff"/>
-  <!-- 黒枠 -->
+  <rect width="512" height="512" rx="108" fill="#ffffff"/>
   <rect
-    x="36"
-    y="36"
-    width="440"
-    height="440"
-    rx="92"
+    x="26"
+    y="26"
+    width="460"
+    height="460"
+    rx="90"
     fill="none"
-    stroke="#111111"
-    stroke-width="24"
+    stroke="#000000"
+    stroke-width="22"
   />
 
-  <!-- ごはん（茶碗の奥から盛り上がる） -->
-  <path
-    fill="#ffffff"
-    stroke="#111111"
-    stroke-width="18"
+  <g
+    fill="none"
+    stroke="#000000"
+    stroke-width="14"
+    stroke-linecap="round"
     stroke-linejoin="round"
-    d="M158 300
-       C162 232 200 168 256 168
-       C312 168 350 232 354 300
-       Z"
-  />
-  <!-- 米粒 -->
-  <g fill="none" stroke="#111111" stroke-width="9" stroke-linecap="round">
-    <path d="M232 198 q10 -12 20 0"/>
-    <path d="M268 198 q10 -12 20 0"/>
-    <path d="M214 224 q10 -12 20 0"/>
-    <path d="M250 218 q10 -12 20 0"/>
-    <path d="M286 224 q10 -12 20 0"/>
-    <path d="M200 252 q10 -12 20 0"/>
-    <path d="M236 246 q10 -12 20 0"/>
-    <path d="M272 246 q10 -12 20 0"/>
-    <path d="M308 252 q10 -12 20 0"/>
-    <path d="M218 276 q10 -12 20 0"/>
-    <path d="M256 270 q10 -12 20 0"/>
-    <path d="M294 276 q10 -12 20 0"/>
+  >
+    <!-- ごはん（雲型の盛り） -->
+    <path
+      d="M142 318
+         C140 278 156 242 186 226
+         C176 204 196 184 222 190
+         C228 166 246 154 256 154
+         C266 154 284 166 290 190
+         C316 184 336 204 326 226
+         C356 242 372 278 370 318"
+    />
+    <!-- お茶碗の縁 -->
+    <path d="M142 318 H370"/>
+    <!-- お茶碗（半円） -->
+    <path d="M142 318 A114 114 0 0 0 370 318"/>
+    <!-- 高台 -->
+    <path d="M224 428 V448 H288 V428"/>
+    <!-- ごはんの模様 -->
+    <path d="M220 232 Q236 218 252 232" stroke-width="12"/>
+    <path d="M270 230 Q286 216 302 230" stroke-width="12"/>
+    <path d="M238 262 Q256 248 274 262" stroke-width="12"/>
   </g>
-
-  <!-- 茶碗 -->
-  <path
-    fill="#ffffff"
-    stroke="#111111"
-    stroke-width="20"
-    stroke-linejoin="round"
-    d="M118 304
-       C128 398 186 440 256 440
-       C326 440 384 398 394 304
-       Z"
-  />
-  <!-- 縁 -->
-  <ellipse
-    cx="256"
-    cy="300"
-    rx="142"
-    ry="26"
-    fill="#ffffff"
-    stroke="#111111"
-    stroke-width="20"
-  />
 </svg>

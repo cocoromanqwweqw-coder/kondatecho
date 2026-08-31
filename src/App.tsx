@@ -75,7 +75,7 @@ export default function App() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
                   <img
-                    src="/pwa-icon.svg"
+                    src="/pwa-icon.svg?v=8"
                     alt="こんだて帳"
                     width={48}
                     height={48}
