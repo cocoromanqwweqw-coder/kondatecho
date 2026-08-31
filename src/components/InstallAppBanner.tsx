@@ -26,8 +26,15 @@ export function InstallAppBanner() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-orange-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto flex max-w-6xl items-start gap-3">
+        <img
+          src="/pwa-icon.svg"
+          alt=""
+          width={40}
+          height={40}
+          className="h-10 w-10 shrink-0 rounded-[22%] border border-orange-100 bg-white"
+        />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-800">📱 アプリのように使う</p>
+          <p className="text-sm font-semibold text-gray-800">アプリのように使う</p>
           <p className="mt-0.5 text-xs text-gray-600 leading-relaxed">
             {isIos ? (
               <>

@@ -73,11 +73,20 @@ export default function App() {
           <header className="bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg">
             <div className="mx-auto max-w-6xl px-4 py-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h1 className="text-2xl font-bold tracking-tight">🍳 献立プランナー</h1>
-                  <p className="mt-1 text-base text-orange-100">
-                    お気に入りをつけて、主食・主菜・副菜をドラッグして週間献立を組み立て
-                  </p>
+                <div className="flex min-w-0 items-start gap-3">
+                  <img
+                    src="/pwa-icon.svg"
+                    alt="こんだて帳"
+                    width={48}
+                    height={48}
+                    className="mt-0.5 h-12 w-12 shrink-0 rounded-[22%] bg-white shadow-sm ring-1 ring-white/50"
+                  />
+                  <div className="min-w-0">
+                    <h1 className="text-2xl font-bold tracking-tight">こんだて帳</h1>
+                    <p className="mt-1 text-base text-orange-100">
+                      お気に入りをつけて、主食・主菜・副菜をドラッグして週間献立を組み立て
+                    </p>
+                  </div>
                 </div>
                 <DisplayModeToggle />
               </div>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>こんだて帳 — スマホ用アイコン</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+  }
+  h1 { font-size: 18px; margin: 0 0 8px; font-weight: 700; }
+  .sub { font-size: 13px; color: #94a3b8; margin-bottom: 24px; }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-end; }
+  figure { margin: 0; text-align: center; }
+  figcaption { margin-top: 10px; font-size: 12px; color: #94a3b8; }
+  .icon {
+    width: 180px; height: 180px;
+    border-radius: 40px;
+    display: block;
+    background: #fff;
+  }
+  .phone {
+    width: 280px;
+    background: #1e293b;
+    border: 8px solid #334155;
+    border-radius: 36px;
+    padding: 28px 18px 22px;
+  }
+  .status { height: 14px; margin-bottom: 18px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px 10px;
+  }
+  .app { text-align: center; }
+  .app img, .app .dot {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    display: block;
+    margin: 0 auto 6px;
+  }
+  .dot { background: #475569; }
+  .app span { font-size: 10px; color: #cbd5e1; }
+</style>
+</head>
+<body>
+  <h1>こんだて帳 — スマホ用アイコン</h1>
+  <p class="sub">白地・黒枠・茶碗にごはん。ホーム画面では下に「こんだて帳」と出ます</p>
+  <div class="row">
+    <figure>
+      <img class="icon" src="/pwa-icon.svg" alt="こんだて帳"/>
+      <figcaption>アイコン単体</figcaption>
+    </figure>
+    <figure>
+      <div class="phone">
+        <div class="status"></div>
+        <div class="grid">
+          <div class="app"><div class="dot"></div><span>時計</span></div>
+          <div class="app"><div class="dot"></div><span>天気</span></div>
+          <div class="app"><div class="dot"></div><span>写真</span></div>
+          <div class="app"><div class="dot"></div><span>カメラ</span></div>
+          <div class="app">
+            <img src="/pwa-icon.svg" alt=""/>
+            <span>こんだて帳</span>
+          </div>
+          <div class="app"><div class="dot"></div><span>地図</span></div>
+          <div class="app"><div class="dot"></div><span>設定</span></div>
+          <div class="app"><div class="dot"></div><span>メモ</span></div>
+        </div>
+      </div>
+      <figcaption>ホーム画面での見え方</figcaption>
+    </figure>
+  </div>
+</body>
+</html>

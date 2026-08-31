@@ -9,7 +9,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-icon.svg'],
+      includeAssets: [
+        'favicon.svg',
+        'pwa-icon.svg',
+        'apple-touch-icon.png',
+        'pwa-icon-192.png',
+        'pwa-icon-512.png',
+      ],
       manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg,webmanifest}'],
