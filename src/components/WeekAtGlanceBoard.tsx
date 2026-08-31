@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { DragPayload } from '../lib/weeklyPlanDrag'
 import { resolveRecipe } from '../lib/recipeResolver'
 import {
@@ -12,6 +13,7 @@ import {
 import { formatDate } from '../lib/storage'
 import { getSlot } from '../lib/mealPlanner'
 import { slotKey as planSlotKey } from '../lib/weeklyPlanDrag'
+import { RecipeDetailPopup } from './RecipeDetailPopup'
 
 const MEAL: MealType = '夜'
 
@@ -102,7 +104,8 @@ function MealSlotCell({
       onDragLeave={() => setDragOverKey(null)}
       onDrop={onDrop}
       onClick={onSelect}
-      className={`relative min-h-[2.35rem] rounded-md border border-dashed p-1 transition-colors ${
+      aria-label={recipe ? `${recipe.name}の詳細` : `${dishRole}を選択`}
+      className={`relative min-h-[2.5rem] cursor-pointer rounded-md border border-dashed p-1 transition-colors ${
         isOver
           ? 'border-orange-400 bg-orange-100/90'
           : recipe
@@ -153,7 +156,7 @@ function MealSlotCell({
           }
           className="mt-0.5 cursor-grab active:cursor-grabbing"
         >
-          <p className="line-clamp-1 text-[10px] font-medium leading-tight text-gray-800">
+          <p className="line-clamp-1 text-sm font-medium leading-tight text-gray-800">
             {recipe.name}
           </p>
         </div>
@@ -181,6 +184,8 @@ interface Props {
   onClear: (dayIndex: number, mealType: MealType, dishRole: DishRole) => void
   onDragStart: (e: React.DragEvent, payload: DragPayload) => void
   onToggleRice: (dayIndex: number, included: boolean) => void
+  favoriteIds: string[]
+  onToggleFavorite: (recipeId: string) => void
 }
 
 /** スマホ縦向き前提：7日分を縦リストで一覧 */
@@ -199,10 +204,19 @@ export function WeekAtGlanceBoard({
   onClear,
   onDragStart,
   onToggleRice,
+  favoriteIds,
+  onToggleFavorite,
 }: Props) {
-  const selectSlot = (dayIndex: number, role: DishRole) => {
+  const [detail, setDetail] = useState<{
+    recipe: Recipe
+    dayIndex: number
+    dishRole: DishRole
+  } | null>(null)
+
+  const selectSlot = (dayIndex: number, role: DishRole, recipe?: Recipe) => {
     setActiveDay(dayIndex)
     setTargetRole(role)
+    if (recipe) setDetail({ recipe, dayIndex, dishRole: role })
   }
 
   return (
@@ -264,7 +278,7 @@ export function WeekAtGlanceBoard({
                     recipe={recipe}
                     isSelected={activeDay === dayIndex && targetRole === role}
                     isOver={dragOverKey === key}
-                    onSelect={() => selectSlot(dayIndex, role)}
+                    onSelect={() => selectSlot(dayIndex, role, recipe)}
                     onDrop={(e) => onDrop(e, dayIndex, role)}
                     onClear={() => onClear(dayIndex, MEAL, role)}
                     onDragStart={onDragStart}
@@ -276,6 +290,17 @@ export function WeekAtGlanceBoard({
           </div>
         )
       })}
+      {detail && (
+        <RecipeDetailPopup
+          recipe={detail.recipe}
+          dayIndex={detail.dayIndex}
+          dishRole={detail.dishRole}
+          isFavorite={favoriteIds.includes(detail.recipe.id)}
+          onClose={() => setDetail(null)}
+          onToggleFavorite={onToggleFavorite}
+          onClear={() => onClear(detail.dayIndex, MEAL, detail.dishRole)}
+        />
+      )}
     </div>
   )
 }

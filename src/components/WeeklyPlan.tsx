@@ -6,14 +6,15 @@ import {
   DAYS,
   DISH_ROLE_EMOJI,
   DISH_ROLES,
+  GENRES,
   type DishRole,
+  type Genre,
   type MealType,
   type Recipe,
   type StagedRecipe,
 } from '../types'
 import { formatDate, getWeekDates } from '../lib/storage'
 import { getCandidateRecipesMulti, getPlanSummary, searchCandidateRecipes } from '../lib/mealPlanner'
-import { DayGenreSettings } from './DayGenreSettings'
 import { RecipePhoto } from './RecipePhoto'
 import { DayDetailPanel } from './DayDetailPanel'
 import { WeekAtGlanceBoard } from './WeekAtGlanceBoard'
@@ -28,9 +29,9 @@ interface Props {
 
 const MEAL: MealType = '夜'
 
-const CANDIDATE_ROW_CLASS = 'h-[2.5rem] shrink-0 snap-start'
-/** 候補リストの表示高さ（10行分） */
-const CANDIDATE_SLIDER_VIEW_CLASS = 'h-[27.25rem]'
+const CANDIDATE_ROW_CLASS = 'h-[3.25rem] shrink-0 snap-start'
+/** 候補リストの表示高さ（8行分） */
+const CANDIDATE_SLIDER_VIEW_CLASS = 'h-[27.75rem]'
 
 export function WeeklyPlan({ app, onGoSearch }: Props) {
   const {
@@ -54,6 +55,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
   const [targetRole, setTargetRole] = useState<DishRole>('主菜')
   const [candidateRoles, setCandidateRoles] = useState<DishRole[]>(() => [...DISH_ROLES])
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [candidateGenre, setCandidateGenre] = useState<'すべて' | Genre>('すべて')
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query)
@@ -89,8 +91,11 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
     if (favoritesOnly) {
       list = list.filter((r) => state.favoriteRecipeIds.includes(r.id))
     }
+    if (candidateGenre !== 'すべて') {
+      list = list.filter((r) => r.genre === candidateGenre)
+    }
     return list
-  }, [candidateRoles, state, activeDay, debouncedQuery, favoritesOnly, isSearching])
+  }, [candidateRoles, state, activeDay, debouncedQuery, favoritesOnly, isSearching, candidateGenre])
 
   const handleDragStart = (e: React.DragEvent, payload: DragPayload) => {
     e.dataTransfer.setData('application/json', JSON.stringify(payload))
@@ -209,17 +214,25 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
             onClear={clearSlot}
             onDragStart={handleDragStart}
             onToggleRice={setDayRiceIncluded}
+            favoriteIds={state.favoriteRecipeIds}
+            onToggleFavorite={toggleFavorite}
           />
-          <div className="mt-1.5 shrink-0">
-            <DayGenreSettings app={app} dayIndex={activeDay} compact />
-          </div>
           <RecipeStagingPanel
             stagedRecipes={state.stagedRecipes}
             customRecipes={state.customRecipes}
+            activeDayLabel={DAYS[activeDay]}
+            targetRole={targetRole}
             dragOverKey={dragOverKey}
             setDragOverKey={setDragOverKey}
             onDrop={handleDropOnStaging}
             onDragStart={handleDragStart}
+            onPlace={(stagedId) =>
+              moveFromStagingToSlot(stagedId, {
+                dayIndex: activeDay,
+                mealType: MEAL,
+                dishRole: targetRole,
+              })
+            }
             onRemove={removeFromStaging}
             onClear={clearStaging}
           />
@@ -281,6 +294,33 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
               {state.favoriteRecipeIds.length > 0 ? ` (${state.favoriteRecipeIds.length})` : ''}
             </button>
           </div>
+          <div className="mb-2 flex flex-wrap gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setCandidateGenre('すべて')}
+              className={`px-2.5 py-1 text-xs rounded-full border transition ${
+                candidateGenre === 'すべて'
+                  ? 'bg-orange-500 text-white border-orange-500'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
+              }`}
+            >
+              すべて
+            </button>
+            {GENRES.map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setCandidateGenre(g)}
+                className={`px-2.5 py-1 text-xs rounded-full border transition ${
+                  candidateGenre === g
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
           <input
             type="text"
             value={query}
@@ -294,8 +334,11 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
             favoriteIds={state.favoriteRecipeIds}
             onDragStart={handleDragStart}
             onQuickAdd={(recipeId) => {
+              setSlot(activeDay, MEAL, targetRole, recipeId)
+            }}
+            onStage={(recipeId) => {
               const recipe = resolveRecipe(recipeId, state.customRecipes)
-              setSlot(activeDay, MEAL, recipe?.dishRole ?? targetRole, recipeId)
+              addToStaging(recipeId, recipe?.dishRole ?? targetRole)
             }}
             onToggleFavorite={toggleFavorite}
           />
@@ -378,19 +421,25 @@ function CustomRecipeAddForm({
 function RecipeStagingPanel({
   stagedRecipes,
   customRecipes,
+  activeDayLabel,
+  targetRole,
   dragOverKey,
   setDragOverKey,
   onDrop,
   onDragStart,
+  onPlace,
   onRemove,
   onClear,
 }: {
   stagedRecipes: StagedRecipe[]
   customRecipes: Recipe[]
+  activeDayLabel: string
+  targetRole: DishRole
   dragOverKey: string | null
   setDragOverKey: (key: string | null) => void
   onDrop: (e: React.DragEvent) => void
   onDragStart: (e: React.DragEvent, payload: DragPayload) => void
+  onPlace: (stagedId: string) => void
   onRemove: (stagedId: string) => void
   onClear: () => void
 }) {
@@ -404,76 +453,100 @@ function RecipeStagingPanel({
       }}
       onDragLeave={() => setDragOverKey(null)}
       onDrop={onDrop}
-      className={`mt-1.5 w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-dashed px-2 py-1 transition-colors ${
+      className={`mt-1.5 w-full min-w-0 shrink-0 overflow-hidden rounded-lg border border-dashed px-2 py-1.5 transition-colors ${
         isOver
           ? 'border-orange-400 bg-orange-100/60'
           : 'border-orange-200/70 bg-orange-50/25'
       }`}
     >
-      <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-        <span className="shrink-0 text-[9px] font-semibold text-gray-500">一時置き場</span>
-        {stagedRecipes.length > 0 ? (
-          <>
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto overflow-y-hidden">
-              {stagedRecipes.map((staged) => {
-                const recipe = resolveRecipe(staged.recipeId, customRecipes)
-                if (!recipe) return null
-
-                return (
-                  <div
-                    key={staged.id}
-                    draggable
-                    onDragStart={(e) =>
-                      onDragStart(e, {
-                        source: 'staging',
-                        stagedId: staged.id,
-                        recipeId: staged.recipeId,
-                        dishRole: staged.dishRole,
-                      })
-                    }
-                    className="flex max-w-[7rem] shrink-0 cursor-grab items-center gap-0.5 rounded-full border border-orange-200/80 bg-white/95 py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
-                  >
-                    <p className="min-w-0 line-clamp-1 text-[9px] font-medium text-gray-700">
-                      <span className="opacity-60">{DISH_ROLE_EMOJI[staged.dishRole]}</span>{' '}
-                      {recipe.name}
-                    </p>
-                    <button
-                      type="button"
-                      aria-label={`${recipe.name}を一時置き場から外す`}
-                      title="外す"
-                      onPointerDown={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                      }}
-                      onMouseDown={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                      }}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        onRemove(staged.id)
-                      }}
-                      className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-gray-400 hover:bg-red-500 hover:text-white"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={onClear}
-              className="shrink-0 text-[8px] text-gray-400 hover:text-gray-600"
-            >
-              全解除
-            </button>
-          </>
-        ) : (
-          <p className="min-w-0 flex-1 truncate text-[9px] text-gray-400">候補・献立からドロップ</p>
+      <div className="mb-1 flex min-w-0 items-center gap-2">
+        <span className="shrink-0 text-[10px] font-semibold text-gray-600">一時置き場</span>
+        <span className="min-w-0 flex-1 truncate text-[10px] text-orange-500">
+          → {activeDayLabel}・{DISH_ROLE_EMOJI[targetRole]} {targetRole}へ
+        </span>
+        {stagedRecipes.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 text-[10px] text-gray-400 hover:text-gray-600"
+          >
+            全解除
+          </button>
         )}
       </div>
+      {stagedRecipes.length > 0 ? (
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {stagedRecipes.map((staged) => {
+            const recipe = resolveRecipe(staged.recipeId, customRecipes)
+            if (!recipe) return null
+
+            return (
+              <div
+                key={staged.id}
+                draggable
+                onDragStart={(e) =>
+                  onDragStart(e, {
+                    source: 'staging',
+                    stagedId: staged.id,
+                    recipeId: staged.recipeId,
+                    dishRole: staged.dishRole,
+                  })
+                }
+                className="flex max-w-[7rem] shrink-0 cursor-grab items-center gap-0.5 rounded-full border border-orange-200/80 bg-white/95 py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
+              >
+                <p className="min-w-0 flex-1 line-clamp-1 text-[9px] font-medium text-gray-700">
+                  <span className="opacity-60">{DISH_ROLE_EMOJI[staged.dishRole]}</span>{' '}
+                  {recipe.name}
+                </p>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onPlace(staged.id)
+                  }}
+                  className="shrink-0 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-orange-600"
+                >
+                  追加
+                </button>
+                <button
+                  type="button"
+                  aria-label={`${recipe.name}を一時置き場から外す`}
+                  title="外す"
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onRemove(staged.id)
+                  }}
+                  className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-gray-400 hover:bg-red-500 hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-[10px] text-gray-400">
+          曜日のマスを選んでから、候補の「置き場へ」→ ここで「追加」
+        </p>
+      )}
     </div>
   )
 }
@@ -484,6 +557,7 @@ function CandidateCard({
   compact = false,
   onDragStart,
   onQuickAdd,
+  onStage,
   onToggleFavorite,
 }: {
   recipe: Recipe
@@ -491,6 +565,7 @@ function CandidateCard({
   compact?: boolean
   onDragStart: (e: React.DragEvent) => void
   onQuickAdd: () => void
+  onStage: () => void
   onToggleFavorite: () => void
 }) {
   return (
@@ -512,31 +587,42 @@ function CandidateCard({
             : `${recipe.genre} · ⏱ ${recipe.cookingTime}分`}
         </p>
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-0.5 self-center">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onToggleFavorite()
-          }}
-          className={`leading-none ${compact ? 'text-sm' : 'text-base'} ${isFavorite ? '' : 'opacity-40'}`}
-          title={isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
-        >
-          {isFavorite ? '⭐' : '☆'}
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onQuickAdd()
-          }}
-          className={`rounded-md bg-orange-100 text-orange-700 hover:bg-orange-200 ${
-            compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs rounded-lg'
-          }`}
-        >
-          追加
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleFavorite()
+        }}
+        className={`shrink-0 leading-none ${compact ? 'text-base' : 'text-lg'} ${isFavorite ? '' : 'opacity-40'}`}
+        title={isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
+      >
+        {isFavorite ? '⭐' : '☆'}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onStage()
+        }}
+        title="一時置き場へ"
+        className={`shrink-0 rounded-lg border border-amber-300 bg-amber-50 font-medium text-amber-900 hover:bg-amber-100 ${
+          compact ? 'px-1.5 py-1 text-[11px]' : 'px-2.5 py-1.5 text-sm'
+        }`}
+      >
+        置き場へ
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onQuickAdd()
+        }}
+        className={`shrink-0 rounded-lg bg-orange-500 font-semibold text-white hover:bg-orange-600 ${
+          compact ? 'px-2.5 py-1 text-sm' : 'px-3 py-1.5 text-sm'
+        }`}
+      >
+        追加
+      </button>
     </div>
   )
 }
@@ -547,6 +633,7 @@ function CandidateSlider({
   favoriteIds,
   onDragStart,
   onQuickAdd,
+  onStage,
   onToggleFavorite,
 }: {
   candidates: Recipe[]
@@ -554,6 +641,7 @@ function CandidateSlider({
   favoriteIds: string[]
   onDragStart: (e: React.DragEvent, payload: DragPayload) => void
   onQuickAdd: (recipeId: string) => void
+  onStage: (recipeId: string) => void
   onToggleFavorite: (recipeId: string) => void
 }) {
   const listRef = useRef<HTMLDivElement>(null)
@@ -639,6 +727,7 @@ function CandidateSlider({
                     })
                   }
                   onQuickAdd={() => onQuickAdd(recipe.id)}
+                  onStage={() => onStage(recipe.id)}
                   onToggleFavorite={() => onToggleFavorite(recipe.id)}
                 />
               </div>
