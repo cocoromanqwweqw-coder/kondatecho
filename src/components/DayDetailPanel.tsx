@@ -10,10 +10,9 @@ type App = ReturnType<typeof useAppState>
 interface Props {
   app: App
   dayIndex: number
-  onGoSearch?: (options?: string | { query?: string }) => void
 }
 
-export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
+export function DayDetailPanel({ app, dayIndex }: Props) {
   const {
     state,
     fillDayEmpty,
@@ -28,7 +27,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
   const n = insight.nutrition
 
   return (
-    <div className="bg-white rounded-xl p-2.5 shadow-sm border border-orange-100 space-y-2.5">
+    <div className="bg-white rounded-xl p-2.5 shadow-sm border border-orange-200/80 space-y-2.5">
       <div className="flex flex-wrap items-center justify-between gap-1.5">
         <div>
           <h3 className="text-sm font-bold text-gray-800">{DAYS[dayIndex]}曜の詳細</h3>
@@ -202,7 +201,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
       )}
 
       {insight.wantToUseHits.length > 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-1">
+        <div className="rounded-xl border border-orange-100 bg-orange-50 p-3 space-y-1">
           <h4 className="text-sm font-bold text-gray-700">🎯 使いたい食材が入っています</h4>
           {insight.wantToUseHits.map((hit) => (
             <p key={hit.name} className="text-xs text-gray-600">
@@ -213,7 +212,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
       )}
 
       {insight.duplicateRecipes.length > 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-1">
+        <div className="rounded-xl border border-orange-100 bg-orange-50 p-3 space-y-1">
           <h4 className="text-sm font-bold text-gray-700">他の日と重複</h4>
           {insight.duplicateRecipes.map((dup) => (
             <p key={dup.recipeId} className="text-xs text-gray-600">
@@ -263,16 +262,6 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
             ))}
           </div>
         </div>
-      )}
-
-      {onGoSearch && insight.filled < 3 && (
-        <button
-          type="button"
-          onClick={() => onGoSearch()}
-          className="w-full text-sm text-orange-600 underline"
-        >
-          レシピ検索で追加する
-        </button>
       )}
     </div>
   )

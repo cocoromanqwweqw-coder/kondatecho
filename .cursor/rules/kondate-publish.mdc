@@ -25,6 +25,6 @@ GIT_COMMITTER_EMAIL="cocoromanqwweqw-coder@users.noreply.github.com"
 ```
 
 4. `git push origin main`（ログインは `cocoromanqwweqw-coder`。古い Metalman0114 は使わない）
-5. 終わったら「1〜3分待って https://kondatecho.vercel.app/ を開く」と伝える
+5. 終わったら「1〜3分待って https://kondatecho-seven.vercel.app/ を開く」と伝える
 
 `.local` メールの commit は Vercel に拒否される。force push はしない。

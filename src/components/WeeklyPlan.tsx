@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { useAppState } from '../hooks/useAppState'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { resolveRecipe } from '../lib/recipeResolver'
@@ -18,22 +18,27 @@ import { getCandidateRecipesMulti, getPlanSummary, searchCandidateRecipes } from
 import { RecipePhoto } from './RecipePhoto'
 import { DayDetailPanel } from './DayDetailPanel'
 import { WeekAtGlanceBoard } from './WeekAtGlanceBoard'
+import { CustomRecipePanel } from './CustomRecipePanel'
+import { RecipeDetailPopup } from './RecipeDetailPopup'
 import { type DragPayload, STAGING_DROP_KEY } from '../lib/weeklyPlanDrag'
 
 type App = ReturnType<typeof useAppState>
 
 interface Props {
   app: App
-  onGoSearch: (options?: string | { query?: string }) => void
+  customEditorId?: string
+  onCustomEditorConsumed?: () => void
 }
 
 const MEAL: MealType = '夜'
 
 const CANDIDATE_ROW_CLASS = 'h-[3.25rem] shrink-0 snap-start'
+/** 行高 3.25rem + gap 0.25rem（16px基準） */
+const CANDIDATE_ROW_PX = 56
 /** 候補リストの表示高さ（8行分） */
 const CANDIDATE_SLIDER_VIEW_CLASS = 'h-[27.75rem]'
 
-export function WeeklyPlan({ app, onGoSearch }: Props) {
+export function WeeklyPlan({ app, customEditorId, onCustomEditorConsumed }: Props) {
   const {
     state,
     autoGenerate,
@@ -46,7 +51,6 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
     removeFromStaging,
     clearStaging,
     moveFromStagingToSlot,
-    addCustomRecipe,
     toggleFavorite,
     setDayRiceIncluded,
   } = app
@@ -58,10 +62,26 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
   const [candidateGenre, setCandidateGenre] = useState<'すべて' | Genre>('すべて')
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [ingredientQuery, setIngredientQuery] = useState('')
+  const [customOpen, setCustomOpen] = useState(false)
+  const [customEditId, setCustomEditId] = useState<string | null>(null)
+  const [candidateDetail, setCandidateDetail] = useState<Recipe | null>(null)
   const debouncedQuery = useDebouncedValue(query)
+  const debouncedIngredient = useDebouncedValue(ingredientQuery)
+
+  const openCustomPanel = useCallback((recipeId: string | null = null) => {
+    setCustomEditId(recipeId)
+    setCustomOpen(true)
+  }, [])
+
+  useEffect(() => {
+    if (!customEditorId) return
+    openCustomPanel(customEditorId)
+    onCustomEditorConsumed?.()
+  }, [customEditorId, onCustomEditorConsumed, openCustomPanel])
 
   const toggleCandidateRole = (role: DishRole) => {
-    if (debouncedQuery.trim()) return
+    if (debouncedQuery.trim() || debouncedIngredient.trim()) return
     setCandidateRoles((prev) => {
       if (prev.includes(role)) {
         if (prev.length <= 1) return prev
@@ -71,23 +91,25 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
     })
   }
 
-  const candidateRoleLabel = debouncedQuery.trim()
-    ? '検索（全役割）'
-    : candidateRoles.length === DISH_ROLES.length
-      ? '全役割'
-      : candidateRoles.join('・')
+  const candidateRoleLabel =
+    debouncedQuery.trim() || debouncedIngredient.trim()
+      ? '検索（全役割）'
+      : candidateRoles.length === DISH_ROLES.length
+        ? '全役割'
+        : candidateRoles.join('・')
 
   const uniqueRecipeCount = useMemo(
     () => new Set(state.weeklyPlan.map((p) => p.recipeId)).size,
     [state.weeklyPlan]
   )
 
-  const isSearching = debouncedQuery.trim().length > 0
+  const isSearching =
+    debouncedQuery.trim().length > 0 || debouncedIngredient.trim().length > 0
 
   const candidates = useMemo(() => {
     let list = isSearching
-      ? searchCandidateRecipes(debouncedQuery, state, activeDay, 80)
-      : getCandidateRecipesMulti(candidateRoles, state, activeDay, 80)
+      ? searchCandidateRecipes(debouncedQuery, state, activeDay, undefined, debouncedIngredient)
+      : getCandidateRecipesMulti(candidateRoles, state, activeDay)
     if (favoritesOnly) {
       list = list.filter((r) => state.favoriteRecipeIds.includes(r.id))
     }
@@ -95,7 +117,16 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
       list = list.filter((r) => r.genre === candidateGenre)
     }
     return list
-  }, [candidateRoles, state, activeDay, debouncedQuery, favoritesOnly, isSearching, candidateGenre])
+  }, [
+    candidateRoles,
+    state,
+    activeDay,
+    debouncedQuery,
+    debouncedIngredient,
+    favoritesOnly,
+    isSearching,
+    candidateGenre,
+  ])
 
   const handleDragStart = (e: React.DragEvent, payload: DragPayload) => {
     e.dataTransfer.setData('application/json', JSON.stringify(payload))
@@ -151,7 +182,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-xl px-3.5 py-2.5 shadow-sm border border-orange-100">
+      <div className="bg-white rounded-xl px-3.5 py-2.5 shadow-sm border border-orange-200/80">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -192,7 +223,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2.5">
+        <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-orange-200/80 bg-white p-2.5 shadow-sm">
           <div className="mb-1 shrink-0 px-0.5">
             <h3 className="text-sm font-bold tracking-wide text-gray-800">1週間の夜ごはん</h3>
             <p className="text-[10px] text-orange-400/80">
@@ -216,6 +247,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
             onToggleRice={setDayRiceIncluded}
             favoriteIds={state.favoriteRecipeIds}
             onToggleFavorite={toggleFavorite}
+            onEditCustom={(recipe) => openCustomPanel(recipe.id)}
           />
           <RecipeStagingPanel
             stagedRecipes={state.stagedRecipes}
@@ -238,7 +270,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
           />
         </div>
 
-        <div className="flex flex-col bg-white rounded-2xl p-3 shadow-sm border border-orange-100">
+        <div className="flex flex-col bg-white rounded-2xl p-3 shadow-sm border border-orange-200/80">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
             <h3 className="text-sm font-bold text-gray-800">
               候補から選ぶ
@@ -250,15 +282,6 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
                 )}
               </span>
             </h3>
-            <button
-              type="button"
-              onClick={() =>
-                onGoSearch({ query: query.trim() || undefined })
-              }
-              className="text-xs text-orange-600 underline"
-            >
-              レシピ検索へ
-            </button>
           </div>
           <div className="flex flex-wrap gap-1 mb-2 shrink-0">
             {DISH_ROLES.map((role) => (
@@ -321,13 +344,22 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
               </button>
             ))}
           </div>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="候補を絞り込み…"
-            className="w-full mb-2 shrink-0 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-orange-300"
-          />
+          <div className="mb-2 flex gap-1.5 shrink-0">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="料理名で絞り込み…"
+              className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-orange-300"
+            />
+            <input
+              type="text"
+              value={ingredientQuery}
+              onChange={(e) => setIngredientQuery(e.target.value)}
+              placeholder="材料でも探す"
+              className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-orange-300"
+            />
+          </div>
           <CandidateSlider
             candidates={candidates}
             favoritesOnly={favoritesOnly}
@@ -341,80 +373,55 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
               addToStaging(recipeId, recipe?.dishRole ?? targetRole)
             }}
             onToggleFavorite={toggleFavorite}
+            onOpenDetail={setCandidateDetail}
           />
-          <CustomRecipeAddForm
-            targetRole={targetRole}
-            onAdd={(name, dishRole) => {
-              const recipeId = addCustomRecipe(name, dishRole)
-              if (recipeId) setSlot(activeDay, MEAL, dishRole, recipeId)
-            }}
-          />
+          <button
+            type="button"
+            onClick={() => openCustomPanel(null)}
+            className="mt-2 w-full shrink-0 rounded-lg border border-dashed border-orange-200 bg-orange-50/50 px-3 py-2 text-sm font-medium text-orange-800 hover:bg-orange-50"
+          >
+            手入力を登録・探す
+          </button>
         </div>
       </div>
 
-      <DayDetailPanel app={app} dayIndex={activeDay} onGoSearch={onGoSearch} />
-    </div>
-  )
-}
-
-function CustomRecipeAddForm({
-  targetRole,
-  onAdd,
-}: {
-  targetRole: DishRole
-  onAdd: (name: string, dishRole: DishRole) => void
-}) {
-  const [name, setName] = useState('')
-  const [dishRole, setDishRole] = useState<DishRole>(targetRole)
-
-  useEffect(() => {
-    setDishRole(targetRole)
-  }, [targetRole])
-
-  const submit = () => {
-    const trimmed = name.trim()
-    if (!trimmed) return
-    onAdd(trimmed, dishRole)
-    setName('')
-  }
-
-  return (
-    <form
-      className="mt-2 shrink-0 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-2 py-1.5"
-      onSubmit={(e) => {
-        e.preventDefault()
-        submit()
-      }}
-    >
-      <p className="mb-1 text-[10px] font-medium text-neutral-600">候補にない料理を手入力</p>
-      <div className="flex gap-1.5">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="例：残り物カレー"
-          className="min-w-0 flex-1 px-2 py-1 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-neutral-400 bg-white"
+      <DayDetailPanel app={app} dayIndex={activeDay} />
+      {candidateDetail && (
+        <RecipeDetailPopup
+          recipe={candidateDetail}
+          dayIndex={activeDay}
+          dishRole={candidateDetail.dishRole ?? targetRole}
+          isFavorite={state.favoriteRecipeIds.includes(candidateDetail.id)}
+          onClose={() => setCandidateDetail(null)}
+          onToggleFavorite={toggleFavorite}
+          onPlace={() => {
+            setSlot(activeDay, MEAL, targetRole, candidateDetail.id)
+          }}
+          onEdit={
+            candidateDetail.custom
+              ? (recipe) => {
+                  setCandidateDetail(null)
+                  openCustomPanel(recipe.id)
+                }
+              : undefined
+          }
         />
-        <select
-          value={dishRole}
-          onChange={(e) => setDishRole(e.target.value as DishRole)}
-          className="shrink-0 px-1.5 py-1 border border-neutral-300 rounded-md text-xs bg-white"
-        >
-          {DISH_ROLES.map((role) => (
-            <option key={role} value={role}>
-              {DISH_ROLE_EMOJI[role]} {role}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          disabled={!name.trim()}
-          className="shrink-0 rounded-md bg-orange-500 px-2 py-1 text-xs font-medium text-orange-950 hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          追加
-        </button>
-      </div>
-    </form>
+      )}
+      <CustomRecipePanel
+        app={app}
+        open={customOpen}
+        initialRecipeId={customEditId}
+        onClose={() => {
+          setCustomOpen(false)
+          setCustomEditId(null)
+        }}
+        onPlace={(recipe) => {
+          setSlot(activeDay, MEAL, recipe.dishRole ?? targetRole, recipe.id)
+          setCustomOpen(false)
+          setCustomEditId(null)
+        }}
+      />
+    </div>
   )
 }
 
@@ -559,6 +566,7 @@ function CandidateCard({
   onQuickAdd,
   onStage,
   onToggleFavorite,
+  onOpenDetail,
 }: {
   recipe: Recipe
   isFavorite: boolean
@@ -567,12 +575,35 @@ function CandidateCard({
   onQuickAdd: () => void
   onStage: () => void
   onToggleFavorite: () => void
+  onOpenDetail: () => void
 }) {
+  const skipClickRef = useRef(false)
+
   return (
     <div
       draggable
-      onDragStart={onDragStart}
-      className={`flex cursor-grab active:cursor-grabbing items-center rounded-lg border bg-gray-50 hover:border-orange-200 ${
+      data-no-swipe
+      role="button"
+      tabIndex={0}
+      aria-label={`${recipe.name}の詳細`}
+      onDragStart={(e) => {
+        skipClickRef.current = true
+        onDragStart(e)
+      }}
+      onClick={() => {
+        if (skipClickRef.current) {
+          skipClickRef.current = false
+          return
+        }
+        onOpenDetail()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpenDetail()
+        }
+      }}
+      className={`flex cursor-grab active:cursor-grabbing items-center rounded-lg border bg-orange-50 hover:border-orange-200 ${
         compact ? 'h-full gap-1.5 p-1.5' : 'gap-2 p-2 rounded-xl'
       } ${isFavorite ? 'border-neutral-400' : recipe.custom ? 'border-neutral-300' : 'border-gray-100'}`}
     >
@@ -635,6 +666,7 @@ function CandidateSlider({
   onQuickAdd,
   onStage,
   onToggleFavorite,
+  onOpenDetail,
 }: {
   candidates: Recipe[]
   favoritesOnly: boolean
@@ -643,16 +675,26 @@ function CandidateSlider({
   onQuickAdd: (recipeId: string) => void
   onStage: (recipeId: string) => void
   onToggleFavorite: (recipeId: string) => void
+  onOpenDetail: (recipe: Recipe) => void
 }) {
   const listRef = useRef<HTMLDivElement>(null)
   const [canScrollUp, setCanScrollUp] = useState(false)
   const [canScrollDown, setCanScrollDown] = useState(false)
+  const [windowStart, setWindowStart] = useState(0)
+  const [windowEnd, setWindowEnd] = useState(16)
 
   const updateScrollState = () => {
     const el = listRef.current
     if (!el) return
     setCanScrollUp(el.scrollTop > 2)
     setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 2)
+
+    const overscan = 8
+    const visible = Math.ceil(el.clientHeight / CANDIDATE_ROW_PX) + overscan * 2
+    const start = Math.max(0, Math.floor(el.scrollTop / CANDIDATE_ROW_PX) - overscan)
+    const end = Math.min(candidates.length, start + visible)
+    setWindowStart(start)
+    setWindowEnd(end)
   }
 
   useEffect(() => {
@@ -665,13 +707,11 @@ function CandidateSlider({
   const scrollByRow = (direction: -1 | 1) => {
     const el = listRef.current
     if (!el) return
-    const row = el.querySelector<HTMLElement>('[data-candidate-row]')
-    const gap = 4
-    const step = row ? row.offsetHeight + gap : 40
-    el.scrollBy({ top: direction * step, behavior: 'smooth' })
+    el.scrollBy({ top: direction * CANDIDATE_ROW_PX, behavior: 'smooth' })
   }
 
   const showScrollButtons = candidates.length > 0 && (canScrollUp || canScrollDown)
+  const visible = candidates.slice(windowStart, windowEnd)
 
   return (
     <div className="relative shrink-0 flex flex-col">
@@ -708,30 +748,38 @@ function CandidateSlider({
             {favoritesOnly ? 'お気に入りに該当する候補がありません' : '候補がありません'}
           </p>
         ) : (
-          <div className="flex flex-col gap-1">
-            {candidates.map((recipe) => (
-              <div
-                key={recipe.id}
-                data-candidate-row
-                className={`${CANDIDATE_ROW_CLASS} overflow-hidden`}
-              >
-                <CandidateCard
-                  recipe={recipe}
-                  isFavorite={favoriteIds.includes(recipe.id)}
-                  compact
-                  onDragStart={(e) =>
-                    onDragStart(e, {
-                      source: 'candidate',
-                      recipeId: recipe.id,
-                      dishRole: recipe.dishRole ?? '主菜',
-                    })
-                  }
-                  onQuickAdd={() => onQuickAdd(recipe.id)}
-                  onStage={() => onStage(recipe.id)}
-                  onToggleFavorite={() => onToggleFavorite(recipe.id)}
-                />
-              </div>
-            ))}
+          <div
+            style={{
+              height: candidates.length * CANDIDATE_ROW_PX,
+              paddingTop: windowStart * CANDIDATE_ROW_PX,
+            }}
+          >
+            <div className="flex flex-col">
+              {visible.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  data-candidate-row
+                  className={`${CANDIDATE_ROW_CLASS} mb-1 overflow-hidden`}
+                >
+                  <CandidateCard
+                    recipe={recipe}
+                    isFavorite={favoriteIds.includes(recipe.id)}
+                    compact
+                    onDragStart={(e) =>
+                      onDragStart(e, {
+                        source: 'candidate',
+                        recipeId: recipe.id,
+                        dishRole: recipe.dishRole ?? '主菜',
+                      })
+                    }
+                    onQuickAdd={() => onQuickAdd(recipe.id)}
+                    onStage={() => onStage(recipe.id)}
+                    onToggleFavorite={() => onToggleFavorite(recipe.id)}
+                    onOpenDetail={() => onOpenDetail(recipe)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

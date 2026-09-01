@@ -27,7 +27,7 @@ export function InventoryPanel({ app }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-orange-100 bg-white p-3.5 shadow-sm">
+    <div className="rounded-2xl border border-orange-200/80 bg-white p-3.5 shadow-sm">
       <h2 className="text-base font-bold text-gray-800">在庫管理</h2>
       <p className="text-xs text-gray-500">
         🎯「使いたい」を付けると献立に優先されます

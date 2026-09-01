@@ -2,6 +2,7 @@ import { getRecipes, getRecipeSearchIndex } from '../data/recipes'
 import { matchesIngredientSearch } from './japaneseText'
 import {
   buildRecipeSearchIndex,
+  indexMatchesIngredient,
   indexMatchesText,
 } from './recipeSearchIndex'
 import type { AppState, DishRole, Genre, MealType, PlannedMeal, Recipe } from '../types'
@@ -215,18 +216,18 @@ export function getCandidateRecipes(
   return result
 }
 
-/** 複数役割の候補をマージして返す（手動選び用） */
+/** 複数役割の候補をマージして返す（手動選び用。limit 未指定なら該当レシピを全部） */
 export function getCandidateRecipesMulti(
   roles: DishRole[],
   state: AppState,
   dayIndex: number,
-  limit = 80
+  limit = Number.POSITIVE_INFINITY
 ): Recipe[] {
   if (roles.length === 0) return []
   if (roles.length === 1) return getCandidateRecipes(roles[0], state, dayIndex, limit)
 
   const orderedRoles = DISH_ROLES.filter((role) => roles.includes(role))
-  const perRole = Math.ceil(limit / orderedRoles.length)
+  const perRole = Number.isFinite(limit) ? Math.ceil(limit / orderedRoles.length) : Number.POSITIVE_INFINITY
   const result: Recipe[] = []
   const seen = new Set<string>()
 
@@ -242,15 +243,17 @@ export function getCandidateRecipesMulti(
   return result
 }
 
-/** 検索クエリで全レシピから候補を返す（役割フィルターは無視） */
+/** 料理名・材料で全レシピから候補を返す（役割フィルターは無視） */
 export function searchCandidateRecipes(
   query: string,
   state: AppState,
   dayIndex: number,
-  limit = 80
+  limit = Number.POSITIVE_INFINITY,
+  ingredient = ''
 ): Recipe[] {
   const q = query.trim()
-  if (!q) return []
+  const ing = ingredient.trim()
+  if (!q && !ing) return []
 
   const searchIndex = [
     ...getRecipeSearchIndex(),
@@ -262,7 +265,8 @@ export function searchCandidateRecipes(
   for (const entry of searchIndex) {
     const recipe = entry.recipe
     if (seen.has(recipe.id)) continue
-    if (!indexMatchesText(entry, q)) continue
+    if (q && !indexMatchesText(entry, q)) continue
+    if (ing && !indexMatchesIngredient(entry, ing)) continue
     seen.add(recipe.id)
     list.push(recipe)
   }

@@ -2,56 +2,40 @@ import { useAppState } from './hooks/useAppState'
 import { useDisplayMode } from './hooks/useDisplayMode'
 import { WeeklyPlan } from './components/WeeklyPlan'
 import { ShoppingMemoPanel } from './components/ShoppingMemoPanel'
-import { RecipeSearch } from './components/RecipeSearch'
 import { InstallAppBanner } from './components/InstallAppBanner'
 import { DisplayModeToggle } from './components/DisplayModeToggle'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { scheduleRecipeRefresh } from './lib/recipeCatalog'
+import { useSwipeTabs } from './hooks/useSwipeTabs'
 
-type Tab = 'plan' | 'shopping' | 'search'
+type Tab = 'plan' | 'shopping'
 
-type SearchEntry = {
-  token: number
-  query: string
-}
-
-export type GoSearchOptions = {
-  query?: string
-}
+const TAB_IDS = ['plan', 'shopping'] as const
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'plan', label: '週間献立', icon: '📅' },
   { id: 'shopping', label: '買い物メモ', icon: '🛒' },
-  { id: 'search', label: 'レシピ検索', icon: '🔍' },
 ]
 
 export default function App() {
   const app = useAppState()
   const { mode } = useDisplayMode()
   const [tab, setTab] = useState<Tab>('plan')
-  const [searchEntry, setSearchEntry] = useState<SearchEntry>({
-    token: 0,
-    query: '',
-  })
+  const [customEditorId, setCustomEditorId] = useState<string | undefined>()
+
+  const consumeCustomEditor = useCallback(() => {
+    setCustomEditorId(undefined)
+  }, [])
 
   const selectTab = (id: Tab) => {
     setTab(id)
   }
 
-  const goSearch = (options?: string | GoSearchOptions) => {
-    const opts =
-      typeof options === 'string' ? { query: options } : (options ?? {})
-    const trimmed = opts.query?.trim()
-    setSearchEntry((prev) => ({
-      token: trimmed !== undefined ? prev.token + 1 : prev.token,
-      query: trimmed ?? prev.query,
-    }))
-    setTab('search')
-  }
-
   const goPlan = () => {
     setTab('plan')
   }
+
+  const swipe = useSwipeTabs(TAB_IDS, tab, selectTab)
 
   useEffect(() => {
     scheduleRecipeRefresh()
@@ -59,23 +43,23 @@ export default function App() {
 
   const shellClass =
     mode === 'mobile'
-      ? 'mx-auto min-h-screen max-w-[430px] border-x border-neutral-200 bg-white'
+      ? 'mx-auto min-h-screen max-w-[430px] overflow-hidden border-x border-orange-200/80 bg-canvas'
       : mode === 'desktop'
         ? 'min-w-[1024px]'
         : 'min-h-screen'
 
   const outerClass =
     mode === 'mobile'
-      ? 'min-h-screen bg-white'
+      ? 'min-h-screen bg-canvas'
       : mode === 'desktop'
-        ? 'min-h-screen overflow-x-auto'
-        : 'min-h-screen'
+        ? 'min-h-screen overflow-x-auto bg-canvas'
+        : 'min-h-screen bg-canvas'
 
   return (
     <div className={outerClass}>
       <div className={shellClass}>
-        <div className="min-h-screen bg-white pb-8 text-neutral-900">
-          <header className="border-b border-neutral-200 bg-white">
+        <div className="min-h-screen bg-canvas pb-8 text-neutral-900">
+          <header className="border-b border-orange-200/70 bg-canvas">
             <div className="mx-auto max-w-6xl px-4 py-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
@@ -99,7 +83,7 @@ export default function App() {
           </header>
 
           <nav className="mx-auto mt-4 max-w-6xl px-4">
-            <div className="flex gap-1 border-b border-neutral-200">
+            <div className="flex gap-1 border-b border-orange-200/70">
               {TABS.map((t) => (
                 <button
                   key={t.id}
@@ -117,19 +101,38 @@ export default function App() {
           </nav>
 
           <main className="mx-auto mt-6 max-w-6xl px-4">
-            <div className={tab === 'plan' ? '' : 'hidden'}>
-              <WeeklyPlan app={app} onGoSearch={goSearch} />
-            </div>
-            <div className={tab === 'shopping' ? '' : 'hidden'}>
-              <ShoppingMemoPanel app={app} onGoPlan={goPlan} />
-            </div>
-            <div className={tab === 'search' ? '' : 'hidden'}>
-              <RecipeSearch
-                key={searchEntry.token}
-                app={app}
-                initialQuery={searchEntry.query}
-                onBackToPlan={goPlan}
-              />
+            <div
+              className="tab-pager w-full min-w-0 max-w-full overflow-hidden touch-pan-y"
+              onPointerDown={swipe.onPointerDown}
+              onPointerMove={swipe.onPointerMove}
+              onPointerUp={swipe.onPointerUp}
+              onPointerCancel={swipe.onPointerCancel}
+            >
+              <div
+                className="tab-pager-track flex min-w-0"
+                style={swipe.trackStyle}
+              >
+                <div
+                  className="tab-pager-page min-w-0"
+                  aria-hidden={tab !== 'plan'}
+                >
+                  <WeeklyPlan
+                    app={app}
+                    customEditorId={customEditorId}
+                    onCustomEditorConsumed={consumeCustomEditor}
+                  />
+                </div>
+                <div
+                  className="tab-pager-page min-w-0"
+                  aria-hidden={tab !== 'shopping'}
+                >
+                  <ShoppingMemoPanel
+                    app={app}
+                    onGoPlan={goPlan}
+                    onOpenCustomPanel={setCustomEditorId}
+                  />
+                </div>
+              </div>
             </div>
           </main>
           <InstallAppBanner />

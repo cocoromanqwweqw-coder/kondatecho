@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, Recipe } from '../types'
 import { DISH_ROLES, GENRES } from '../types'
 import { loadState, saveState } from '../lib/storage'
+import { createId } from '../lib/id'
 import { resolveRecipe } from '../lib/recipeResolver'
 import { generateWeeklyPlan, getCandidateRecipes, getRecipeDuplicateKey, ingredientMatch } from '../lib/mealPlanner'
 import { buildPlanShoppingItems, isShoppingChecked, toggleCheckedName } from '../lib/shoppingList'
@@ -29,7 +30,7 @@ export function useAppState() {
 
   const addInventoryItem = useCallback((name: string, quantity?: string) => {
     const item: InventoryItem = {
-      id: crypto.randomUUID(),
+      id: createId(),
       name: name.trim(),
       quantity,
       wantToUse: false,
@@ -70,7 +71,7 @@ export function useAppState() {
         return prev
       }
       const item: ExtraShoppingItem = {
-        id: crypto.randomUUID(),
+        id: createId(),
         name: trimmed,
         checked: false,
       }
@@ -100,7 +101,7 @@ export function useAppState() {
       const addIfMissing = (name: string) => {
         if (inventory.some((i) => ingredientMatch(i.name, name))) return
         inventory.push({
-          id: crypto.randomUUID(),
+          id: createId(),
           name,
           wantToUse: false,
         })
@@ -286,7 +287,7 @@ export function useAppState() {
           stagedRecipes: [
             ...prev.stagedRecipes,
             {
-              id: crypto.randomUUID(),
+              id: createId(),
               recipeId: slot.recipeId,
               dishRole: recipe?.dishRole ?? dishRole,
             },
@@ -302,7 +303,7 @@ export function useAppState() {
       ...prev,
       stagedRecipes: [
         ...prev.stagedRecipes,
-        { id: crypto.randomUUID(), recipeId, dishRole },
+        { id: createId(), recipeId, dishRole },
       ],
     }))
   }, [])
@@ -356,7 +357,7 @@ export function useAppState() {
           stagedRecipes = [
             ...stagedRecipes,
             {
-              id: crypto.randomUUID(),
+              id: createId(),
               recipeId: existing.recipeId,
               dishRole: displaced?.dishRole ?? to.dishRole,
             },
@@ -369,15 +370,25 @@ export function useAppState() {
     []
   )
 
-  const addCustomRecipe = useCallback((name: string, dishRole: DishRole) => {
+  const addCustomRecipe = useCallback(
+    (name: string, dishRole: DishRole, ingredients: string[] = []) => {
     const trimmed = name.trim()
     if (!trimmed) return null
 
+    const seen = new Set<string>()
+    const parsed: string[] = []
+    for (const raw of ingredients) {
+      const token = raw.trim()
+      if (!token || seen.has(token)) continue
+      seen.add(token)
+      parsed.push(token)
+    }
+
     const recipe: Recipe = {
-      id: `custom-${crypto.randomUUID()}`,
+      id: `custom-${createId()}`,
       name: trimmed,
       genre: '和食',
-      ingredients: [],
+      ingredients: parsed,
       cookingTime: 0,
       difficulty: '普通',
       description: '手入力レシピ',
@@ -390,6 +401,49 @@ export function useAppState() {
       customRecipes: [...prev.customRecipes, recipe],
     }))
     return recipe.id
+  }, [])
+
+  const updateCustomRecipe = useCallback(
+    (
+      id: string,
+      patch: { name?: string; dishRole?: DishRole; ingredients?: string[] }
+    ) => {
+      setState((prev) => ({
+        ...prev,
+        customRecipes: prev.customRecipes.map((r) => {
+          if (r.id !== id) return r
+          const name = patch.name !== undefined ? patch.name.trim() : r.name
+          if (!name) return r
+          const seen = new Set<string>()
+          const ingredients =
+            patch.ingredients !== undefined
+              ? patch.ingredients.filter((raw) => {
+                  const token = raw.trim()
+                  if (!token || seen.has(token)) return false
+                  seen.add(token)
+                  return true
+                })
+              : r.ingredients
+          return {
+            ...r,
+            name,
+            dishRole: patch.dishRole ?? r.dishRole,
+            ingredients,
+          }
+        }),
+      }))
+    },
+    []
+  )
+
+  const removeCustomRecipe = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      customRecipes: prev.customRecipes.filter((r) => r.id !== id),
+      weeklyPlan: prev.weeklyPlan.filter((p) => p.recipeId !== id),
+      stagedRecipes: prev.stagedRecipes.filter((s) => s.recipeId !== id),
+      favoriteRecipeIds: prev.favoriteRecipeIds.filter((fid) => fid !== id),
+    }))
   }, [])
 
   const clearPlan = useCallback(() => {
@@ -482,6 +536,8 @@ export function useAppState() {
     clearStaging,
     moveFromStagingToSlot,
     addCustomRecipe,
+    updateCustomRecipe,
+    removeCustomRecipe,
     clearPlan,
     clearDay,
     fillDayEmpty,

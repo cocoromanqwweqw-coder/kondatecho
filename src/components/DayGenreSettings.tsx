@@ -60,7 +60,7 @@ export function DayGenreSettings({ app, dayIndex, compact = false }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-orange-100">
+    <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-orange-200/80">
       <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
         <div>
           <h3 className="text-sm font-bold text-gray-800">曜日別ジャンル設定</h3>

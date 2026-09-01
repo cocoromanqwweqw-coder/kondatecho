@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DishRole, Recipe } from '../types'
 import { DAYS, DISH_ROLE_EMOJI } from '../types'
 import type { useAppState } from '../hooks/useAppState'
-import { formatDate, getWeekDates } from '../lib/storage'
 import {
   buildPlanShoppingItems,
   buildWeekMenus,
@@ -17,6 +16,7 @@ type App = ReturnType<typeof useAppState>
 interface Props {
   app: App
   onGoPlan: () => void
+  onOpenCustomPanel?: (recipeId: string) => void
 }
 
 type Detail = {
@@ -86,7 +86,7 @@ function FreeMemoField({
   )
 }
 
-export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
+export function ShoppingMemoPanel({ app, onGoPlan, onOpenCustomPanel }: Props) {
   const {
     state,
     toggleFavorite,
@@ -97,7 +97,6 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
   const { isDesktopLayout } = useDisplayMode()
   const [detail, setDetail] = useState<Detail | null>(null)
 
-  const weekDates = getWeekDates(state.weekStartDate)
   const menus = useMemo(() => buildWeekMenus(state), [state])
   const planItems = useMemo(() => buildPlanShoppingItems(state), [state])
 
@@ -108,14 +107,9 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-orange-100 bg-white p-3.5 shadow-sm">
+      <div className="rounded-2xl border border-orange-200/80 bg-white p-3.5 shadow-sm">
         <div className="mb-2 flex items-baseline justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-gray-800">今週のレシピ</h2>
-            <p className="text-xs text-gray-500">
-              {formatDate(weekDates[0])} 〜 {formatDate(weekDates[6])}
-            </p>
-          </div>
+          <h2 className="text-base font-bold text-gray-800">今週のレシピ</h2>
           <button
             type="button"
             onClick={onGoPlan}
@@ -125,13 +119,16 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
           </button>
         </div>
 
-        <div className="divide-y divide-gray-50">
+        <div className="space-y-2">
           {menus.map((day) => (
-            <div key={day.dayIndex} className="flex items-center gap-2 py-1">
-              <p className="w-[4.25rem] shrink-0 text-xs font-bold text-gray-700">
-                {day.weekday} {day.dateLabel}
+            <div
+              key={day.dayIndex}
+              className="flex items-start gap-2 rounded-lg border border-orange-200 bg-white px-2 py-2"
+            >
+              <p className="w-7 shrink-0 rounded-md bg-orange-100 py-1 text-center text-sm font-bold leading-none text-orange-800">
+                {day.weekday}
               </p>
-              <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
                 {day.slots.map((slot) =>
                   slot.recipe ? (
                     <button
@@ -145,14 +142,14 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
                         })
                       }
                       title={slot.recipe.name}
-                      className="min-w-0 truncate rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium text-gray-800 hover:bg-orange-100"
+                      className="max-w-full shrink-0 truncate whitespace-nowrap rounded-md bg-orange-50 px-1.5 py-0.5 text-sm font-medium text-gray-800 hover:bg-orange-100"
                     >
                       {DISH_ROLE_EMOJI[slot.role]} {slot.recipe.name}
                     </button>
                   ) : (
                     <span
                       key={slot.role}
-                      className="shrink-0 rounded-md bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-400"
+                      className="shrink-0 rounded-md bg-gray-50 px-1.5 py-0.5 text-sm text-gray-400"
                     >
                       {DISH_ROLE_EMOJI[slot.role]}
                     </span>
@@ -164,7 +161,7 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-orange-100 bg-white p-3.5 shadow-sm">
+      <div className="rounded-2xl border border-orange-200/80 bg-white p-3.5 shadow-sm">
         <h2 className="text-base font-bold text-gray-800">買い物メモ</h2>
         <p className="text-xs text-gray-500">在庫にない材料。チェックして在庫へ</p>
 
@@ -232,6 +229,11 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
           isFavorite={state.favoriteRecipeIds.includes(detail.recipe.id)}
           onClose={() => setDetail(null)}
           onToggleFavorite={toggleFavorite}
+          onEdit={
+            detail.recipe.custom && onOpenCustomPanel
+              ? (recipe) => onOpenCustomPanel(recipe.id)
+              : undefined
+          }
         />
       )}
     </div>

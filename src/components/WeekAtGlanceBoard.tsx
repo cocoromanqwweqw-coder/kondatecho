@@ -97,6 +97,7 @@ function MealSlotCell({
 
   return (
     <div
+      data-no-swipe
       onDragOver={(e) => {
         e.preventDefault()
         setDragOverKey(key)
@@ -112,7 +113,7 @@ function MealSlotCell({
             ? 'border-orange-200/90 bg-white'
             : isSelected
               ? 'border-amber-400 bg-amber-50/90 ring-1 ring-amber-300/60'
-              : 'border-gray-200/80 bg-gray-50/50'
+              : 'border-orange-100 bg-orange-50/40'
       }`}
     >
       {recipe && (
@@ -186,6 +187,7 @@ interface Props {
   onToggleRice: (dayIndex: number, included: boolean) => void
   favoriteIds: string[]
   onToggleFavorite: (recipeId: string) => void
+  onEditCustom?: (recipe: Recipe) => void
 }
 
 /** スマホ縦向き前提：7日分を縦リストで一覧 */
@@ -206,6 +208,7 @@ export function WeekAtGlanceBoard({
   onToggleRice,
   favoriteIds,
   onToggleFavorite,
+  onEditCustom,
 }: Props) {
   const [detail, setDetail] = useState<{
     recipe: Recipe
@@ -299,6 +302,14 @@ export function WeekAtGlanceBoard({
           onClose={() => setDetail(null)}
           onToggleFavorite={onToggleFavorite}
           onClear={() => onClear(detail.dayIndex, MEAL, detail.dishRole)}
+          onEdit={
+            detail.recipe.custom && onEditCustom
+              ? (recipe) => {
+                  onEditCustom(recipe)
+                  setDetail(null)
+                }
+              : undefined
+          }
         />
       )}
     </div>

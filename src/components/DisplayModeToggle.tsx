@@ -16,7 +16,7 @@ export function DisplayModeToggle() {
       aria-label="表示モード"
     >
       <span className="hidden text-xs text-neutral-400 sm:inline">表示</span>
-      <div className="flex rounded-md border border-neutral-300 bg-white p-0.5">
+      <div className="flex rounded-md border border-orange-200 bg-white p-0.5">
         {OPTIONS.map((opt) => (
           <button
             key={opt.id}

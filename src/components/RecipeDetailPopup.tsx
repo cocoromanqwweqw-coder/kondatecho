@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { DishRole, Recipe } from '../types'
 import { DAYS, DISH_ROLE_EMOJI } from '../types'
 import { RecipePhoto } from './RecipePhoto'
@@ -13,6 +14,8 @@ interface Props {
   onClose: () => void
   onToggleFavorite?: (recipeId: string) => void
   onClear?: () => void
+  onPlace?: () => void
+  onEdit?: (recipe: Recipe) => void
 }
 
 export function RecipeDetailPopup({
@@ -23,6 +26,8 @@ export function RecipeDetailPopup({
   onClose,
   onToggleFavorite,
   onClear,
+  onPlace,
+  onEdit,
 }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,7 +42,7 @@ export function RecipeDetailPopup({
     }
   }, [onClose])
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4"
       role="presentation"
@@ -119,6 +124,30 @@ export function RecipeDetailPopup({
           {!recipe.custom && <RecipeLinks recipe={recipe} />}
 
           <div className="flex gap-2 pt-1">
+            {recipe.custom && onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEdit(recipe)
+                  onClose()
+                }}
+                className="flex-1 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-sm font-medium text-orange-800 hover:bg-orange-100"
+              >
+                編集
+              </button>
+            )}
+            {onPlace && (
+              <button
+                type="button"
+                onClick={() => {
+                  onPlace()
+                  onClose()
+                }}
+                className="flex-1 rounded-xl bg-orange-500 px-3 py-2.5 text-sm font-semibold text-orange-950 hover:bg-orange-600"
+              >
+                このマスに追加
+              </button>
+            )}
             {onClear && (
               <button
                 type="button"
@@ -134,13 +163,18 @@ export function RecipeDetailPopup({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl bg-orange-500 px-3 py-2.5 text-sm font-medium text-orange-950 hover:bg-orange-600"
+              className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-medium ${
+                onPlace
+                  ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  : 'bg-orange-500 text-orange-950 hover:bg-orange-600'
+              }`}
             >
               閉じる
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
-/* 白バック + オリーブカーキ（茶と緑のあいだ）。黒の塗りボタンは使わない */
+/* 薄いオリーブのキャンバス + 白パネル。黒の塗りボタンは使わない */
 @theme {
-  --color-orange-50: #f6f5ee;
+  --color-canvas: #f1efe4;
+
+  --color-orange-50: #f8f7f1;
   --color-orange-100: #ebe9dc;
   --color-orange-200: #d8d4bc;
   --color-orange-300: #ddd6bc;
@@ -14,7 +16,7 @@
   --color-orange-900: #2c2b22;
   --color-orange-950: #1c1b16;
 
-  --color-amber-50: #f6f5ee;
+  --color-amber-50: #f8f7f1;
   --color-amber-100: #ebe9dc;
   --color-amber-200: #d8d4bc;
   --color-amber-300: #ddd6bc;
@@ -30,10 +32,20 @@
 html,
 body {
   margin: 0;
-  background: #fff;
+  background: var(--color-canvas);
   color: #111;
 }
 
 body {
   padding-top: env(safe-area-inset-top);
+}
+
+.tab-pager-track {
+  will-change: transform;
+}
+
+.tab-pager-page {
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: 100%;
 }
