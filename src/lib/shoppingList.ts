@@ -1,5 +1,6 @@
 import type { AppState, DishRole, Recipe } from '../types'
 import { DAYS, DISH_ROLES } from '../types'
+import { classifyIngredient, SHOPPING_CATEGORIES, type ShoppingCategory } from './ingredientCategory'
 import { getSlot, ingredientMatch } from './mealPlanner'
 import { resolveRecipe } from './recipeResolver'
 import { formatDate, getWeekDates } from './storage'
@@ -67,8 +68,31 @@ export function buildPlanShoppingItems(state: AppState): PlanShoppingItem[] {
   }
 
   for (const g of groups) g.days.sort((a, b) => a - b)
-  groups.sort((a, b) => a.name.localeCompare(b.name, 'ja'))
+  groups.sort((a, b) => {
+    const cat =
+      SHOPPING_CATEGORIES.indexOf(classifyIngredient(a.name)) -
+      SHOPPING_CATEGORIES.indexOf(classifyIngredient(b.name))
+    if (cat !== 0) return cat
+    return a.name.localeCompare(b.name, 'ja')
+  })
   return groups
+}
+
+export type ShoppingItemGroup = {
+  category: ShoppingCategory
+  items: PlanShoppingItem[]
+}
+
+export function groupPlanShoppingItems(items: PlanShoppingItem[]): ShoppingItemGroup[] {
+  const buckets = new Map<ShoppingCategory, PlanShoppingItem[]>()
+  for (const category of SHOPPING_CATEGORIES) buckets.set(category, [])
+  for (const item of items) {
+    buckets.get(classifyIngredient(item.name))!.push(item)
+  }
+  return SHOPPING_CATEGORIES.map((category) => ({
+    category,
+    items: buckets.get(category) ?? [],
+  })).filter((group) => group.items.length > 0)
 }
 
 export function isShoppingChecked(name: string, checkedNames: string[]): boolean {

@@ -5,6 +5,7 @@ import type { useAppState } from '../hooks/useAppState'
 import {
   buildPlanShoppingItems,
   buildWeekMenus,
+  groupPlanShoppingItems,
   isShoppingChecked,
 } from '../lib/shoppingList'
 import { InventoryPanel } from './InventoryPanel'
@@ -99,6 +100,7 @@ export function ShoppingMemoPanel({ app, onGoPlan, onOpenCustomPanel }: Props) {
 
   const menus = useMemo(() => buildWeekMenus(state), [state])
   const planItems = useMemo(() => buildPlanShoppingItems(state), [state])
+  const shoppingGroups = useMemo(() => groupPlanShoppingItems(planItems), [planItems])
 
   const checkedCount = planItems.filter((item) =>
     isShoppingChecked(item.name, state.shoppingCheckedNames)
@@ -180,40 +182,49 @@ export function ShoppingMemoPanel({ app, onGoPlan, onOpenCustomPanel }: Props) {
             献立を入れると、足りない食材がここに出ます
           </p>
         ) : (
-          <ul
-            className={`mt-2 max-h-52 overflow-y-auto ${
-              isDesktopLayout
-                ? 'grid grid-cols-3 gap-x-3 gap-y-0.5'
-                : 'grid grid-cols-2 gap-x-2 gap-y-0.5'
-            }`}
-          >
-            {planItems.map((item) => {
-              const checked = isShoppingChecked(item.name, state.shoppingCheckedNames)
-              const dayLabel = item.days.map((d) => DAYS[d]).join('・')
-              return (
-                <li key={`plan-${item.name}`} className="flex min-w-0 items-center gap-1.5 py-0.5">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleShoppingChecked(item.name)}
-                    className="h-3.5 w-3.5 shrink-0 accent-orange-500"
-                    aria-label={`${item.name}を買った`}
-                  />
-                  <p
-                    className={`min-w-0 flex-1 truncate text-sm ${checked ? 'text-gray-400 line-through' : 'text-gray-800'}`}
-                  >
-                    {item.name}
-                    {item.count > 1 && (
-                      <span className="ml-0.5 text-xs text-gray-400">×{item.count}</span>
-                    )}
-                    <span className="ml-1 text-[11px] font-normal text-gray-400">
-                      {dayLabel}
-                    </span>
-                  </p>
-                </li>
-              )
-            })}
-          </ul>
+          <div className="mt-2 max-h-80 space-y-2.5 overflow-y-auto">
+            {shoppingGroups.map((group) => (
+              <section key={group.category}>
+                <h3 className="mb-0.5 text-[11px] font-semibold tracking-wide text-orange-800">
+                  {group.category}
+                </h3>
+                <ul
+                  className={
+                    isDesktopLayout
+                      ? 'grid grid-cols-3 gap-x-3 gap-y-0.5'
+                      : 'grid grid-cols-2 gap-x-2 gap-y-0.5'
+                  }
+                >
+                  {group.items.map((item) => {
+                    const checked = isShoppingChecked(item.name, state.shoppingCheckedNames)
+                    const dayLabel = item.days.map((d) => DAYS[d]).join('・')
+                    return (
+                      <li key={`plan-${item.name}`} className="flex min-w-0 items-center gap-1.5 py-0.5">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleShoppingChecked(item.name)}
+                          className="h-3.5 w-3.5 shrink-0 accent-orange-500"
+                          aria-label={`${item.name}を買った`}
+                        />
+                        <p
+                          className={`min-w-0 flex-1 truncate text-sm ${checked ? 'text-gray-400 line-through' : 'text-gray-800'}`}
+                        >
+                          {item.name}
+                          {item.count > 1 && (
+                            <span className="ml-0.5 text-xs text-gray-400">×{item.count}</span>
+                          )}
+                          <span className="ml-1 text-[11px] font-normal text-gray-400">
+                            {dayLabel}
+                          </span>
+                        </p>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
 
         <FreeMemoField value={state.shoppingFreeMemo} onCommit={setShoppingFreeMemo} />
