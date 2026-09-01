@@ -234,7 +234,7 @@ export function CustomRecipePanel({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="料理名・材料をまとめて検索"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-300"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-base focus:outline-none focus:ring-1 focus:ring-orange-300"
             />
             <p className="mt-1 text-[10px] text-gray-400">
               スペース区切りで全部含む。材料でもヒットします
@@ -322,7 +322,7 @@ export function CustomRecipePanel({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="例：残り物カレー"
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-300"
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-base focus:outline-none focus:ring-1 focus:ring-orange-300"
             />
             <p className="mt-3 text-[11px] font-medium text-gray-500">役割</p>
             <div className="mt-1 flex gap-1.5">
@@ -353,7 +353,7 @@ export function CustomRecipePanel({
                   addDraftIngredients()
                 }}
                 placeholder="にんじん、玉ねぎ"
-                className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-300"
+                className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-base focus:outline-none focus:ring-1 focus:ring-orange-300"
               />
               <button
                 type="button"

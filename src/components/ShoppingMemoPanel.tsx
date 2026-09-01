@@ -80,7 +80,7 @@ function FreeMemoField({
         onBlur={flush}
         placeholder="店・予算・忘れものなど、自由に…"
         rows={4}
-        className="w-full resize-y rounded-lg border border-gray-200 px-3 py-1.5 text-sm leading-snug focus:outline-none focus:ring-2 focus:ring-orange-300"
+        className="w-full resize-y rounded-lg border border-gray-200 px-3 py-1.5 text-base leading-snug focus:outline-none focus:ring-2 focus:ring-orange-300"
       />
     </label>
   )

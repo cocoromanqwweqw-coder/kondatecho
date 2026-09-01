@@ -40,14 +40,14 @@ export function InventoryPanel({ app }: Props) {
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="食材名（例: 鶏もも肉）"
-          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 py-1 text-base focus:outline-none focus:ring-2 focus:ring-orange-300"
         />
         <input
           type="text"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           placeholder="量"
-          className="w-14 rounded-lg border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          className="w-14 rounded-lg border border-gray-200 px-2 py-1 text-base focus:outline-none focus:ring-2 focus:ring-orange-300"
         />
         <button
           type="button"

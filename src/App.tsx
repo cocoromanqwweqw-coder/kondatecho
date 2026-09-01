@@ -7,6 +7,7 @@ import { DisplayModeToggle } from './components/DisplayModeToggle'
 import { useEffect, useState, useCallback } from 'react'
 import { scheduleRecipeRefresh } from './lib/recipeCatalog'
 import { useSwipeTabs } from './hooks/useSwipeTabs'
+import { useIosInputZoomReset } from './hooks/useIosInputZoomReset'
 
 type Tab = 'plan' | 'shopping'
 
@@ -36,6 +37,7 @@ export default function App() {
   }
 
   const swipe = useSwipeTabs(TAB_IDS, tab, selectTab)
+  useIosInputZoomReset()
 
   useEffect(() => {
     scheduleRecipeRefresh()

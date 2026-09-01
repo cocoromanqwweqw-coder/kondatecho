@@ -350,14 +350,14 @@ export function WeeklyPlan({ app, customEditorId, onCustomEditorConsumed }: Prop
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="料理名で絞り込み…"
-              className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-orange-300"
+              className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-1 focus:ring-orange-300"
             />
             <input
               type="text"
               value={ingredientQuery}
               onChange={(e) => setIngredientQuery(e.target.value)}
               placeholder="材料でも探す"
-              className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-orange-300"
+              className="min-w-0 flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-base focus:outline-none focus:ring-1 focus:ring-orange-300"
             />
           </div>
           <CandidateSlider
