@@ -2,6 +2,7 @@ import { useAppState } from './hooks/useAppState'
 import { useDisplayMode } from './hooks/useDisplayMode'
 import { WeeklyPlan } from './components/WeeklyPlan'
 import { ShoppingMemoPanel } from './components/ShoppingMemoPanel'
+import { DataBackupBar } from './components/DataBackupBar'
 import { InstallAppBanner } from './components/InstallAppBanner'
 import { DisplayModeToggle } from './components/DisplayModeToggle'
 import { useEffect, useState, useCallback } from 'react'
@@ -81,6 +82,7 @@ export default function App() {
                 </div>
                 <DisplayModeToggle />
               </div>
+              <DataBackupBar state={app.state} onRestore={app.replaceState} />
             </div>
           </header>
 

@@ -94,20 +94,16 @@ function saveCustomRecipes(recipes: Recipe[]): void {
   }
 }
 
-export function loadState(): AppState {
-  const storedCustom = loadCustomRecipes()
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      return {
-        ...defaultState,
-        customRecipes: storedCustom ?? [],
-      }
-    }
-    const parsedRaw = JSON.parse(raw) as Partial<AppState> & {
-      wantToUseRecipeIds?: string[]
-      weekStartsOnMonday?: boolean
-    }
+type StoredState = Partial<AppState> & {
+  wantToUseRecipeIds?: string[]
+  weekStartsOnMonday?: boolean
+}
+
+function normalizeState(
+  parsedRaw: StoredState,
+  storedCustom: Recipe[] | null,
+  migrateCustom = true
+): AppState {
     const parsed: AppState = { ...defaultState, ...parsedRaw }
     // 旧フィールド wantToUseRecipeIds → favoriteRecipeIds へ移行
     if (
@@ -149,7 +145,7 @@ export function loadState(): AppState {
     parsed.dayRiceIncluded = parsed.dayRiceIncluded ?? {}
     const fromMain = sanitizeCustomRecipes(parsed.customRecipes)
     parsed.customRecipes = storedCustom ?? fromMain
-    if (storedCustom === null && fromMain.length > 0) {
+    if (migrateCustom && storedCustom === null && fromMain.length > 0) {
       saveCustomRecipes(fromMain)
     }
     // 旧データ（dishRoleなし / 昼ごはん）は破棄
@@ -188,12 +184,48 @@ export function loadState(): AppState {
     }
 
     return parsed
+}
+
+export function loadState(): AppState {
+  const storedCustom = loadCustomRecipes()
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      return {
+        ...defaultState,
+        customRecipes: storedCustom ?? [],
+      }
+    }
+    return normalizeState(JSON.parse(raw) as StoredState, storedCustom)
   } catch {
     return {
       ...defaultState,
       customRecipes: storedCustom ?? [],
     }
   }
+}
+
+export function stateFromBackupPayload(raw: unknown): AppState | null {
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as { kind?: unknown; state?: unknown }
+  if (row.kind !== 'kondatecho-backup') return null
+  if (!row.state || typeof row.state !== 'object') return null
+  const parsed = row.state as StoredState
+  const custom = sanitizeCustomRecipes(parsed.customRecipes)
+  return normalizeState(parsed, custom, false)
+}
+
+export function forceSaveState(state: AppState): void {
+  saveCustomRecipes(state.customRecipes ?? [])
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // quota など。手入力は上で保存済み
+  }
+}
+
+export function requestPersistentStorage(): void {
+  void navigator.storage?.persist?.()
 }
 
 function isBareState(state: AppState): boolean {

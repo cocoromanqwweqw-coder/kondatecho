@@ -39,6 +39,7 @@ export function InstallAppBanner() {
             {isIos ? (
               <>
                 Safari の <strong>共有</strong> → <strong>ホーム画面に追加</strong>
+                。アイコンを消すと記録も消えるので、上の <strong>ファイルに保存</strong> を先に。
               </>
             ) : (
               <>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, Recipe } from '../types'
 import { DISH_ROLES, GENRES } from '../types'
-import { loadState, saveState } from '../lib/storage'
+import { loadState, saveState, forceSaveState, requestPersistentStorage } from '../lib/storage'
 import { createId } from '../lib/id'
 import { resolveRecipe } from '../lib/recipeResolver'
 import { generateWeeklyPlan, getCandidateRecipes, getRecipeDuplicateKey, ingredientMatch } from '../lib/mealPlanner'
@@ -23,6 +23,15 @@ export function useAppState() {
   useEffect(() => {
     saveState(state)
   }, [state])
+
+  useEffect(() => {
+    requestPersistentStorage()
+  }, [])
+
+  const replaceState = useCallback((next: AppState) => {
+    forceSaveState(next)
+    setState(next)
+  }, [])
 
   const update = useCallback((patch: Partial<AppState>) => {
     setState((prev) => ({ ...prev, ...patch }))
@@ -544,5 +553,6 @@ export function useAppState() {
     favoriteDayRecipes,
     setShoppingFreeMemo,
     setDayRiceIncluded,
+    replaceState,
   }
 }
