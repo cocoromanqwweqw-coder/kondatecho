@@ -1,5 +1,5 @@
 import type { AppState } from '../types'
-import { stateFromBackupPayload } from './storage'
+import { snapshotForBackup, stateFromBackupPayload } from './storage'
 
 export const BACKUP_KIND = 'kondatecho-backup'
 
@@ -15,7 +15,7 @@ export function buildBackupPayload(state: AppState): BackupPayload {
     kind: BACKUP_KIND,
     version: 1,
     savedAt: new Date().toISOString(),
-    state,
+    state: snapshotForBackup(state),
   }
 }
 

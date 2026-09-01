@@ -1,8 +1,21 @@
-import type { AppState, Recipe } from '../types'
+import type {
+  AppState,
+  ExtraShoppingItem,
+  InventoryItem,
+  PlannedMeal,
+  Recipe,
+  StagedRecipe,
+} from '../types'
 
 const STORAGE_KEY = 'weekly-menu-app'
 /** 手入力は公開更新で本体が壊れても残す */
 const CUSTOM_RECIPES_KEY = 'weekly-menu-custom-recipes'
+const INVENTORY_KEY = 'weekly-menu-inventory'
+const PLAN_KEY = 'weekly-menu-plan'
+const SHOPPING_KEY = 'weekly-menu-shopping'
+const FAVORITES_KEY = 'weekly-menu-favorites'
+const IDB_NAME = 'kondatecho'
+const IDB_STORE = 'kv'
 
 const defaultState: AppState = {
   inventory: [],
@@ -87,10 +100,255 @@ function loadCustomRecipes(): Recipe[] | null {
 }
 
 function saveCustomRecipes(recipes: Recipe[]): void {
+  writeJson(CUSTOM_RECIPES_KEY, recipes)
+}
+
+function writeJson(key: string, value: unknown): void {
   try {
-    localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(recipes))
+    localStorage.setItem(key, JSON.stringify(value))
   } catch {
-    // quota など。本体保存は別途試す
+    // quota など
+  }
+}
+
+function readJson(key: string): unknown | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw === null) return null
+    return JSON.parse(raw) as unknown
+  } catch {
+    return null
+  }
+}
+
+function unionById<T extends { id: string }>(a: T[], b: T[]): T[] {
+  const map = new Map<string, T>()
+  for (const item of a) map.set(item.id, item)
+  for (const item of b) map.set(item.id, item)
+  return [...map.values()]
+}
+
+function sanitizeInventory(raw: unknown): InventoryItem[] {
+  if (!Array.isArray(raw)) return []
+  const result: InventoryItem[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Partial<InventoryItem>
+    if (typeof row.id !== 'string' || !row.id.trim()) continue
+    if (typeof row.name !== 'string' || !row.name.trim()) continue
+    result.push({
+      id: row.id,
+      name: row.name.trim(),
+      quantity: typeof row.quantity === 'string' ? row.quantity : undefined,
+      wantToUse: Boolean(row.wantToUse),
+    })
+  }
+  return result
+}
+
+type PlanSlice = {
+  weeklyPlan: PlannedMeal[]
+  weekStartDate: string
+  stagedRecipes: StagedRecipe[]
+  dayRiceIncluded: AppState['dayRiceIncluded']
+  dayDisabledGenres: AppState['dayDisabledGenres']
+  preferredGenres: AppState['preferredGenres']
+  dayPrepNotes: AppState['dayPrepNotes']
+}
+
+type ShoppingSlice = {
+  shoppingCheckedNames: string[]
+  extraShoppingItems: ExtraShoppingItem[]
+  shoppingFreeMemo: string
+  dayShoppingNotes: AppState['dayShoppingNotes']
+}
+
+function persistSlices(state: AppState, mirrorIdb = true): void {
+  saveCustomRecipes(state.customRecipes ?? [])
+  writeJson(INVENTORY_KEY, state.inventory ?? [])
+  writeJson(PLAN_KEY, {
+    weeklyPlan: state.weeklyPlan ?? [],
+    weekStartDate: state.weekStartDate,
+    stagedRecipes: state.stagedRecipes ?? [],
+    dayRiceIncluded: state.dayRiceIncluded ?? {},
+    dayDisabledGenres: state.dayDisabledGenres ?? {},
+    preferredGenres: state.preferredGenres ?? [],
+    dayPrepNotes: state.dayPrepNotes ?? {},
+  } satisfies PlanSlice)
+  writeJson(SHOPPING_KEY, {
+    shoppingCheckedNames: state.shoppingCheckedNames ?? [],
+    extraShoppingItems: state.extraShoppingItems ?? [],
+    shoppingFreeMemo: state.shoppingFreeMemo ?? '',
+    dayShoppingNotes: state.dayShoppingNotes ?? {},
+  } satisfies ShoppingSlice)
+  writeJson(FAVORITES_KEY, state.favoriteRecipeIds ?? [])
+  if (mirrorIdb && !isBareState(state)) void writeIdb(state)
+}
+
+function applySlices(parsed: AppState): AppState {
+  const inventory = sanitizeInventory(readJson(INVENTORY_KEY))
+  if (inventory.length > 0) parsed.inventory = unionById(inventory, parsed.inventory ?? [])
+
+  const favoritesRaw = readJson(FAVORITES_KEY)
+  if (Array.isArray(favoritesRaw)) {
+    const favorites = favoritesRaw.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+    if (favorites.length > 0) {
+      parsed.favoriteRecipeIds = [...new Set([...favorites, ...parsed.favoriteRecipeIds])]
+    }
+  }
+
+  const planRaw = readJson(PLAN_KEY)
+  if (planRaw && typeof planRaw === 'object') {
+    const plan = planRaw as Partial<PlanSlice>
+    if (Array.isArray(plan.weeklyPlan) && plan.weeklyPlan.length > 0 && parsed.weeklyPlan.length === 0) {
+      parsed.weeklyPlan = plan.weeklyPlan
+      if (typeof plan.weekStartDate === 'string' && plan.weekStartDate.trim()) {
+        parsed.weekStartDate = plan.weekStartDate
+      }
+    }
+    if (Array.isArray(plan.stagedRecipes) && plan.stagedRecipes.length > 0 && parsed.stagedRecipes.length === 0) {
+      parsed.stagedRecipes = plan.stagedRecipes
+    }
+    if (Array.isArray(plan.preferredGenres) && plan.preferredGenres.length > 0 && parsed.preferredGenres.length === 0) {
+      parsed.preferredGenres = plan.preferredGenres
+    }
+    if (plan.dayRiceIncluded && Object.keys(parsed.dayRiceIncluded).length === 0) {
+      parsed.dayRiceIncluded = plan.dayRiceIncluded
+    }
+    if (plan.dayDisabledGenres && Object.keys(parsed.dayDisabledGenres).length === 0) {
+      parsed.dayDisabledGenres = plan.dayDisabledGenres
+    }
+    if (plan.dayPrepNotes && Object.keys(parsed.dayPrepNotes).length === 0) {
+      parsed.dayPrepNotes = plan.dayPrepNotes
+    }
+  }
+
+  const shoppingRaw = readJson(SHOPPING_KEY)
+  if (shoppingRaw && typeof shoppingRaw === 'object') {
+    const shopping = shoppingRaw as Partial<ShoppingSlice>
+    if (Array.isArray(shopping.extraShoppingItems) && shopping.extraShoppingItems.length > 0) {
+      parsed.extraShoppingItems = unionById(shopping.extraShoppingItems, parsed.extraShoppingItems)
+    }
+    if (
+      Array.isArray(shopping.shoppingCheckedNames) &&
+      shopping.shoppingCheckedNames.length > 0 &&
+      parsed.shoppingCheckedNames.length === 0
+    ) {
+      parsed.shoppingCheckedNames = shopping.shoppingCheckedNames
+    }
+    if (shopping.shoppingFreeMemo && !parsed.shoppingFreeMemo) {
+      parsed.shoppingFreeMemo = shopping.shoppingFreeMemo
+    }
+    if (shopping.dayShoppingNotes && Object.keys(parsed.dayShoppingNotes).length === 0) {
+      parsed.dayShoppingNotes = shopping.dayShoppingNotes
+    }
+  }
+
+  return parsed
+}
+
+function writeIdb(state: AppState): Promise<void> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve()
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(IDB_NAME, 1)
+      req.onerror = () => resolve()
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE)
+      }
+      req.onsuccess = () => {
+        try {
+          const db = req.result
+          const tx = db.transaction(IDB_STORE, 'readwrite')
+          tx.objectStore(IDB_STORE).put(state, 'app')
+          tx.oncomplete = () => {
+            db.close()
+            resolve()
+          }
+          tx.onerror = () => {
+            db.close()
+            resolve()
+          }
+        } catch {
+          resolve()
+        }
+      }
+    } catch {
+      resolve()
+    }
+  })
+}
+
+export function readIdbState(): Promise<AppState | null> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null)
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open(IDB_NAME, 1)
+      req.onerror = () => resolve(null)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE)
+      }
+      req.onsuccess = () => {
+        try {
+          const db = req.result
+          const tx = db.transaction(IDB_STORE, 'readonly')
+          const get = tx.objectStore(IDB_STORE).get('app')
+          get.onsuccess = () => {
+            db.close()
+            const value = get.result
+            if (!value || typeof value !== 'object') {
+              resolve(null)
+              return
+            }
+            const custom = sanitizeCustomRecipes((value as AppState).customRecipes)
+            resolve(applySlices(normalizeState(value as StoredState, custom, false)))
+          }
+          get.onerror = () => {
+            db.close()
+            resolve(null)
+          }
+        } catch {
+          resolve(null)
+        }
+      }
+    } catch {
+      resolve(null)
+    }
+  })
+}
+
+export function isBareUserData(state: AppState): boolean {
+  return isBareState(state)
+}
+
+export function snapshotForBackup(live: AppState): AppState {
+  const storedCustom = loadCustomRecipes() ?? []
+  const storedInventory = sanitizeInventory(readJson(INVENTORY_KEY))
+  const merged: AppState = {
+    ...live,
+    customRecipes: unionById(storedCustom, live.customRecipes ?? []),
+    inventory: unionById(storedInventory, live.inventory ?? []),
+  }
+  return applySlices(merged)
+}
+
+export function backupCounts(state: AppState): {
+  plan: number
+  custom: number
+  inventory: number
+  favorites: number
+  shopping: number
+} {
+  return {
+    plan: state.weeklyPlan?.length ?? 0,
+    custom: state.customRecipes?.length ?? 0,
+    inventory: state.inventory?.length ?? 0,
+    favorites: state.favoriteRecipeIds?.length ?? 0,
+    shopping:
+      (state.extraShoppingItems?.length ?? 0) +
+      (state.shoppingFreeMemo?.trim() ? 1 : 0),
   }
 }
 
@@ -116,6 +374,7 @@ function normalizeState(
     parsed.favoriteRecipeIds = Array.isArray(parsed.favoriteRecipeIds)
       ? parsed.favoriteRecipeIds
       : []
+    parsed.inventory = sanitizeInventory(parsed.inventory)
     parsed.stagedRecipes = (Array.isArray(parsed.stagedRecipes) ? parsed.stagedRecipes : []).filter(
       (s) => s && typeof s === 'object' && 'id' in s && 'recipeId' in s && 'dishRole' in s
     )
@@ -186,23 +445,43 @@ function normalizeState(
     return parsed
 }
 
+function dedicatedKeysMissing(): boolean {
+  try {
+    return (
+      localStorage.getItem(INVENTORY_KEY) === null ||
+      localStorage.getItem(PLAN_KEY) === null ||
+      localStorage.getItem(SHOPPING_KEY) === null ||
+      localStorage.getItem(FAVORITES_KEY) === null
+    )
+  } catch {
+    return false
+  }
+}
+
 export function loadState(): AppState {
   const storedCustom = loadCustomRecipes()
+  let loaded: AppState
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      return {
+      loaded = {
         ...defaultState,
         customRecipes: storedCustom ?? [],
       }
+    } else {
+      loaded = normalizeState(JSON.parse(raw) as StoredState, storedCustom)
     }
-    return normalizeState(JSON.parse(raw) as StoredState, storedCustom)
   } catch {
-    return {
+    loaded = {
       ...defaultState,
       customRecipes: storedCustom ?? [],
     }
   }
+  loaded = applySlices(loaded)
+  if (dedicatedKeysMissing() && !isBareState(loaded)) {
+    persistSlices(loaded)
+  }
+  return loaded
 }
 
 export function stateFromBackupPayload(raw: unknown): AppState | null {
@@ -216,11 +495,12 @@ export function stateFromBackupPayload(raw: unknown): AppState | null {
 }
 
 export function forceSaveState(state: AppState): void {
-  saveCustomRecipes(state.customRecipes ?? [])
+  persistSlices(state, false)
+  void writeIdb(state)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
-    // quota など。手入力は上で保存済み
+    // quota など。スライスは上で保存済み
   }
 }
 
@@ -236,26 +516,51 @@ function isBareState(state: AppState): boolean {
     (state.favoriteRecipeIds?.length ?? 0) === 0 &&
     (state.stagedRecipes?.length ?? 0) === 0 &&
     (state.extraShoppingItems?.length ?? 0) === 0 &&
-    !state.shoppingFreeMemo
+    (state.preferredGenres?.length ?? 0) === 0 &&
+    !state.shoppingFreeMemo?.trim() &&
+    Object.keys(state.dayShoppingNotes ?? {}).length === 0 &&
+    Object.keys(state.dayPrepNotes ?? {}).length === 0 &&
+    Object.keys(state.dayDisabledGenres ?? {}).length === 0 &&
+    Object.keys(state.dayRiceIncluded ?? {}).length === 0
   )
 }
 
-export function saveState(state: AppState): void {
-  const custom = state.customRecipes ?? []
-  const storedCustom = loadCustomRecipes()
-  const hydrationRace = isBareState(state) && (storedCustom?.length ?? 0) > 0
-  if (!hydrationRace) {
-    saveCustomRecipes(custom)
+function hasProtectedStoredData(): boolean {
+  if ((loadCustomRecipes()?.length ?? 0) > 0) return true
+  if (sanitizeInventory(readJson(INVENTORY_KEY)).length > 0) return true
+  const favorites = readJson(FAVORITES_KEY)
+  if (Array.isArray(favorites) && favorites.length > 0) return true
+  const plan = readJson(PLAN_KEY)
+  if (plan && typeof plan === 'object') {
+    const slice = plan as Partial<PlanSlice>
+    if (Array.isArray(slice.weeklyPlan) && slice.weeklyPlan.length > 0) return true
+    if (Array.isArray(slice.stagedRecipes) && slice.stagedRecipes.length > 0) return true
   }
-
+  const shopping = readJson(SHOPPING_KEY)
+  if (shopping && typeof shopping === 'object') {
+    const slice = shopping as Partial<ShoppingSlice>
+    if (Array.isArray(slice.extraShoppingItems) && slice.extraShoppingItems.length > 0) return true
+    if (typeof slice.shoppingFreeMemo === 'string' && slice.shoppingFreeMemo.trim()) return true
+  }
   try {
     const existing = localStorage.getItem(STORAGE_KEY)
-    if (isBareState(state) && existing && existing.length > 20) {
-      return
-    }
+    if (existing && existing.length > 20) return true
+  } catch {
+    // ignore
+  }
+  return false
+}
+
+export function saveState(state: AppState): void {
+  // 起動直後の空 state で、保存済みの献立・手入力・在庫を消さない
+  if (isBareState(state) && hasProtectedStoredData()) {
+    return
+  }
+  persistSlices(state)
+  try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
-    // quota など。手入力は上で保存済み
+    // quota など。スライスは上で保存済み
   }
 }
 

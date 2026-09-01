@@ -59,3 +59,24 @@ select {
   width: 100%;
   max-width: 100%;
 }
+
+button,
+[role='button'],
+[data-pressable] {
+  -webkit-tap-highlight-color: rgb(198 189 160 / 0.4);
+}
+
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  [data-pressable] {
+    transition: transform 80ms ease-out, filter 80ms ease-out;
+  }
+
+  button:active,
+  [role='button']:active,
+  [data-pressable]:active {
+    transform: scale(0.97);
+    filter: brightness(0.94);
+  }
+}

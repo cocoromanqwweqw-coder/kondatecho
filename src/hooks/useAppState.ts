@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, Recipe } from '../types'
 import { DISH_ROLES, GENRES } from '../types'
-import { loadState, saveState, forceSaveState, requestPersistentStorage } from '../lib/storage'
+import { loadState, saveState, forceSaveState, requestPersistentStorage, readIdbState, isBareUserData } from '../lib/storage'
 import { createId } from '../lib/id'
 import { resolveRecipe } from '../lib/recipeResolver'
 import { generateWeeklyPlan, getCandidateRecipes, getRecipeDuplicateKey, ingredientMatch } from '../lib/mealPlanner'
@@ -13,6 +13,7 @@ import {
 
 export function useAppState() {
   const [state, setState] = useState<AppState>(() => loadState())
+  const [hydrated, setHydrated] = useState(false)
   const catalogRevision = useSyncExternalStore(
     subscribeRecipeCatalog,
     getRecipeCatalogRevision,
@@ -21,8 +22,29 @@ export function useAppState() {
   void catalogRevision
 
   useEffect(() => {
+    let cancelled = false
+    const initial = loadState()
+    void (async () => {
+      try {
+        if (isBareUserData(initial)) {
+          const fromIdb = await readIdbState()
+          if (!cancelled && fromIdb && !isBareUserData(fromIdb)) {
+            setState((prev) => (isBareUserData(prev) ? fromIdb : prev))
+          }
+        }
+      } finally {
+        if (!cancelled) setHydrated(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
     saveState(state)
-  }, [state])
+  }, [state, hydrated])
 
   useEffect(() => {
     requestPersistentStorage()

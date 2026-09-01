@@ -11,6 +11,7 @@ import {
   type Recipe,
 } from '../types'
 import { formatDate } from '../lib/storage'
+import { hapticTap } from '../lib/haptic'
 import { getSlot } from '../lib/mealPlanner'
 import { slotKey as planSlotKey } from '../lib/weeklyPlanDrag'
 import { RecipeDetailPopup } from './RecipeDetailPopup'
@@ -98,13 +99,17 @@ function MealSlotCell({
   return (
     <div
       data-no-swipe
+      data-pressable
       onDragOver={(e) => {
         e.preventDefault()
         setDragOverKey(key)
       }}
       onDragLeave={() => setDragOverKey(null)}
       onDrop={onDrop}
-      onClick={onSelect}
+      onClick={() => {
+        hapticTap()
+        onSelect()
+      }}
       aria-label={recipe ? `${recipe.name}の詳細` : `${dishRole}を選択`}
       className={`relative min-h-[2.5rem] cursor-pointer rounded-md border border-dashed p-1 transition-colors ${
         isOver
@@ -241,7 +246,10 @@ export function WeekAtGlanceBoard({
             <div className="mb-1 flex items-center justify-between gap-1 px-0.5">
               <button
                 type="button"
-                onClick={() => setActiveDay(dayIndex)}
+                onClick={() => {
+                  hapticTap()
+                  setActiveDay(dayIndex)
+                }}
                 className="flex min-w-0 items-center gap-1.5 text-left"
               >
                 <span

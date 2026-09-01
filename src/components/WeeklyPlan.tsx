@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { useAppState } from '../hooks/useAppState'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { resolveRecipe } from '../lib/recipeResolver'
+import { hapticTap } from '../lib/haptic'
 import {
   DAYS,
   DISH_ROLE_EMOJI,
@@ -282,6 +283,9 @@ export function WeeklyPlan({ app, customEditorId, onCustomEditorConsumed }: Prop
                 )}
               </span>
             </h3>
+            <p className="mt-0.5 hidden text-[10px] text-gray-400 [@media(pointer:coarse)]:block">
+              スマホではドラッグできません。「追加」か「置き場へ」をタップ
+            </p>
           </div>
           <div className="flex flex-wrap gap-1 mb-2 shrink-0">
             {DISH_ROLES.map((role) => (
@@ -518,6 +522,7 @@ function RecipeStagingPanel({
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
+                    hapticTap('success')
                     onPlace(staged.id)
                   }}
                   className="shrink-0 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-orange-950 hover:bg-orange-600"
@@ -595,6 +600,7 @@ function CandidateCard({
           skipClickRef.current = false
           return
         }
+        hapticTap()
         onOpenDetail()
       }}
       onKeyDown={(e) => {
@@ -622,6 +628,7 @@ function CandidateCard({
         type="button"
         onClick={(e) => {
           e.stopPropagation()
+          hapticTap()
           onToggleFavorite()
         }}
         className={`shrink-0 leading-none ${compact ? 'text-base' : 'text-lg'} ${isFavorite ? '' : 'opacity-40'}`}
@@ -633,6 +640,7 @@ function CandidateCard({
         type="button"
         onClick={(e) => {
           e.stopPropagation()
+          hapticTap('success')
           onStage()
         }}
         title="一時置き場へ"
@@ -646,6 +654,7 @@ function CandidateCard({
         type="button"
         onClick={(e) => {
           e.stopPropagation()
+          hapticTap('success')
           onQuickAdd()
         }}
         className={`shrink-0 rounded-lg bg-orange-500 font-semibold text-orange-950 hover:bg-orange-600 ${

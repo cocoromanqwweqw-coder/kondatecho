@@ -5,6 +5,7 @@ import { DAYS, DISH_ROLE_EMOJI } from '../types'
 import { RecipePhoto } from './RecipePhoto'
 import { RecipeLinks } from './RecipeLinks'
 import { HealthTagBadges } from './HealthTagBadges'
+import { hapticTap } from '../lib/haptic'
 
 interface Props {
   recipe: Recipe
@@ -84,7 +85,10 @@ export function RecipeDetailPopup({
                 {onToggleFavorite && (
                   <button
                     type="button"
-                    onClick={() => onToggleFavorite(recipe.id)}
+                    onClick={() => {
+                      hapticTap()
+                      onToggleFavorite(recipe.id)
+                    }}
                     title={isFavorite ? 'お気に入り解除' : 'お気に入りに追加'}
                     className={`shrink-0 text-xl leading-none ${isFavorite ? '' : 'opacity-40'}`}
                   >
@@ -140,6 +144,7 @@ export function RecipeDetailPopup({
               <button
                 type="button"
                 onClick={() => {
+                  hapticTap('success')
                   onPlace()
                   onClose()
                 }}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AppState } from '../types'
 import { parseBackupFile, shareOrDownloadBackup } from '../lib/backup'
+import { backupCounts, snapshotForBackup } from '../lib/storage'
 
 const WARNING_AT_KEY = 'weekly-menu-delete-warning-at'
 const LAST_BACKUP_AT_KEY = 'weekly-menu-last-backup-at'
@@ -62,6 +63,7 @@ export function DataBackupBar({ state, onRestore }: Props) {
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
+  const counts = backupCounts(snapshotForBackup(state))
 
   useEffect(() => {
     if (shouldShowWarning()) setShowWarning(true)
@@ -76,7 +78,7 @@ export function DataBackupBar({ state, onRestore }: Props) {
     setBusy(true)
     setMessage(null)
     try {
-      const how = await shareOrDownloadBackup(state)
+      const how = await shareOrDownloadBackup(snapshotForBackup(state))
       markBackupSaved()
       setShowWarning(false)
       setMessage(
@@ -102,7 +104,7 @@ export function DataBackupBar({ state, onRestore }: Props) {
       return
     }
     const ok = window.confirm(
-      '今の献立・手入力・買い物メモを、ファイルの内容に置き換えますか？'
+      '今の献立・手入力・在庫・買い物メモを、ファイルの内容に置き換えますか？'
     )
     if (!ok) return
     onRestore(next)
@@ -125,7 +127,7 @@ export function DataBackupBar({ state, onRestore }: Props) {
             アプリを消す前に、保存してください
           </h2>
           <p id="delete-warning-body" className="mt-2 text-sm leading-relaxed text-gray-600">
-            ホーム画面からこんだて帳を消すと、献立も手入力も一緒に消えます。消す前に「ファイルに保存」して、ファイルアプリに残してください。
+            ホーム画面からこんだて帳を消すと、献立・手入力・在庫も一緒に消えます。消す前に「ファイルに保存」して、ファイルアプリに残してください。
           </p>
           <div className="mt-4 flex flex-col gap-2">
             <button
@@ -152,9 +154,11 @@ export function DataBackupBar({ state, onRestore }: Props) {
   return (
     <>
       <div className="mt-3 rounded-xl border border-orange-300 bg-orange-50 px-3 py-2.5">
-        <p className="text-xs font-bold text-orange-900">アプリを消す前に、保存してください</p>
+        <p className="text-xs font-bold text-orange-900">入力した内容は自動で保存されます</p>
         <p className="mt-0.5 text-[11px] leading-snug text-orange-800/90">
-          ホーム画面からアイコンを消すと、献立も手入力も消えます。
+          献立 {counts.plan}・手入力 {counts.custom}・在庫 {counts.inventory}・お気に入り {counts.favorites}
+          {counts.shopping > 0 ? `・買い物 ${counts.shopping}` : ''}
+          。ホーム画面から消すと消えるので、ファイルにも残してください。
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <button

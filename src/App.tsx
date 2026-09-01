@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { scheduleRecipeRefresh } from './lib/recipeCatalog'
 import { useSwipeTabs } from './hooks/useSwipeTabs'
 import { useIosInputZoomReset } from './hooks/useIosInputZoomReset'
+import { hapticTap } from './lib/haptic'
 
 type Tab = 'plan' | 'shopping'
 
@@ -30,6 +31,7 @@ export default function App() {
   }, [])
 
   const selectTab = (id: Tab) => {
+    hapticTap()
     setTab(id)
   }
 
