@@ -1,6 +1,8 @@
-import type { AppState } from '../types'
+import type { AppState, Recipe } from '../types'
 
 const STORAGE_KEY = 'weekly-menu-app'
+/** 手入力は公開更新で本体が壊れても残す */
+const CUSTOM_RECIPES_KEY = 'weekly-menu-custom-recipes'
 
 const defaultState: AppState = {
   inventory: [],
@@ -56,10 +58,52 @@ function toSundayFirstIndex(mondayFirstIndex: number): number {
   return (mondayFirstIndex + 1) % 7
 }
 
+function sanitizeCustomRecipes(raw: unknown): Recipe[] {
+  if (!Array.isArray(raw)) return []
+  const result: Recipe[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Partial<Recipe>
+    if (typeof row.id !== 'string' || !row.id.trim()) continue
+    if (typeof row.name !== 'string' || !row.name.trim()) continue
+    result.push({
+      ...(row as Recipe),
+      id: row.id,
+      name: row.name.trim(),
+      custom: true,
+    })
+  }
+  return result
+}
+
+function loadCustomRecipes(): Recipe[] | null {
+  try {
+    const raw = localStorage.getItem(CUSTOM_RECIPES_KEY)
+    if (raw === null) return null
+    return sanitizeCustomRecipes(JSON.parse(raw) as unknown)
+  } catch {
+    return null
+  }
+}
+
+function saveCustomRecipes(recipes: Recipe[]): void {
+  try {
+    localStorage.setItem(CUSTOM_RECIPES_KEY, JSON.stringify(recipes))
+  } catch {
+    // quota など。本体保存は別途試す
+  }
+}
+
 export function loadState(): AppState {
+  const storedCustom = loadCustomRecipes()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { ...defaultState }
+    if (!raw) {
+      return {
+        ...defaultState,
+        customRecipes: storedCustom ?? [],
+      }
+    }
     const parsedRaw = JSON.parse(raw) as Partial<AppState> & {
       wantToUseRecipeIds?: string[]
       weekStartsOnMonday?: boolean
@@ -73,15 +117,19 @@ export function loadState(): AppState {
     ) {
       parsed.favoriteRecipeIds = [...parsedRaw.wantToUseRecipeIds]
     }
-    parsed.favoriteRecipeIds = parsed.favoriteRecipeIds ?? []
-    parsed.stagedRecipes = (parsed.stagedRecipes ?? []).filter(
+    parsed.favoriteRecipeIds = Array.isArray(parsed.favoriteRecipeIds)
+      ? parsed.favoriteRecipeIds
+      : []
+    parsed.stagedRecipes = (Array.isArray(parsed.stagedRecipes) ? parsed.stagedRecipes : []).filter(
       (s) => s && typeof s === 'object' && 'id' in s && 'recipeId' in s && 'dishRole' in s
     )
     parsed.dayShoppingNotes = parsed.dayShoppingNotes ?? {}
     parsed.shoppingCheckedNames = Array.isArray(parsed.shoppingCheckedNames)
       ? parsed.shoppingCheckedNames.filter((n) => typeof n === 'string' && n.trim())
       : []
-    parsed.extraShoppingItems = (parsed.extraShoppingItems ?? [])
+    parsed.extraShoppingItems = (Array.isArray(parsed.extraShoppingItems)
+      ? parsed.extraShoppingItems
+      : [])
       .filter(
         (item) =>
           item &&
@@ -99,16 +147,13 @@ export function loadState(): AppState {
       typeof parsed.shoppingFreeMemo === 'string' ? parsed.shoppingFreeMemo : ''
     parsed.dayPrepNotes = parsed.dayPrepNotes ?? {}
     parsed.dayRiceIncluded = parsed.dayRiceIncluded ?? {}
-    parsed.customRecipes = (parsed.customRecipes ?? []).filter(
-      (r) =>
-        r &&
-        typeof r === 'object' &&
-        typeof r.id === 'string' &&
-        typeof r.name === 'string' &&
-        r.name.trim().length > 0
-    )
+    const fromMain = sanitizeCustomRecipes(parsed.customRecipes)
+    parsed.customRecipes = storedCustom ?? fromMain
+    if (storedCustom === null && fromMain.length > 0) {
+      saveCustomRecipes(fromMain)
+    }
     // 旧データ（dishRoleなし / 昼ごはん）は破棄
-    parsed.weeklyPlan = (parsed.weeklyPlan ?? []).filter(
+    parsed.weeklyPlan = (Array.isArray(parsed.weeklyPlan) ? parsed.weeklyPlan : []).filter(
       (m) =>
         m &&
         typeof m === 'object' &&
@@ -144,12 +189,42 @@ export function loadState(): AppState {
 
     return parsed
   } catch {
-    return { ...defaultState }
+    return {
+      ...defaultState,
+      customRecipes: storedCustom ?? [],
+    }
   }
 }
 
+function isBareState(state: AppState): boolean {
+  return (
+    (state.customRecipes?.length ?? 0) === 0 &&
+    (state.weeklyPlan?.length ?? 0) === 0 &&
+    (state.inventory?.length ?? 0) === 0 &&
+    (state.favoriteRecipeIds?.length ?? 0) === 0 &&
+    (state.stagedRecipes?.length ?? 0) === 0 &&
+    (state.extraShoppingItems?.length ?? 0) === 0 &&
+    !state.shoppingFreeMemo
+  )
+}
+
 export function saveState(state: AppState): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  const custom = state.customRecipes ?? []
+  const storedCustom = loadCustomRecipes()
+  const hydrationRace = isBareState(state) && (storedCustom?.length ?? 0) > 0
+  if (!hydrationRace) {
+    saveCustomRecipes(custom)
+  }
+
+  try {
+    const existing = localStorage.getItem(STORAGE_KEY)
+    if (isBareState(state) && existing && existing.length > 20) {
+      return
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // quota など。手入力は上で保存済み
+  }
 }
 
 export function getWeekDates(weekStartDate: string): Date[] {
