@@ -183,7 +183,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
             <button
               type="button"
               onClick={autoGenerate}
-              className="px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm transition"
+              className="px-3 py-1.5 text-xs font-medium text-orange-950 bg-orange-500 rounded-lg hover:bg-orange-600 shadow-sm transition"
             >
               ✨ 候補を自動配置
             </button>
@@ -192,7 +192,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-orange-100/80 bg-gradient-to-b from-orange-50/35 via-white to-amber-50/25 p-2.5 shadow-md shadow-orange-100/25">
+        <div className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white p-2.5">
           <div className="mb-1 shrink-0 px-0.5">
             <h3 className="text-sm font-bold tracking-wide text-gray-800">1週間の夜ごはん</h3>
             <p className="text-[10px] text-orange-400/80">
@@ -274,8 +274,8 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
                     : ''
                 } ${
                   candidateRoles.includes(role)
-                    ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-300'
+                    ? 'bg-orange-500 text-orange-950 border-orange-500'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-neutral-400'
                 }`}
               >
                 {DISH_ROLE_EMOJI[role]} {role}
@@ -286,8 +286,8 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
               onClick={() => setFavoritesOnly((v) => !v)}
               className={`px-2 py-1 text-xs rounded-full border transition ${
                 favoritesOnly
-                  ? 'bg-pink-500 text-white border-pink-500'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-pink-300'
+                  ? 'bg-orange-500 text-orange-950 border-orange-500'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-neutral-400'
               }`}
             >
               ⭐お気に入り
@@ -300,7 +300,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
               onClick={() => setCandidateGenre('すべて')}
               className={`px-2.5 py-1 text-xs rounded-full border transition ${
                 candidateGenre === 'すべて'
-                  ? 'bg-orange-500 text-white border-orange-500'
+                  ? 'bg-orange-500 text-orange-950 border-orange-500'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
               }`}
             >
@@ -313,7 +313,7 @@ export function WeeklyPlan({ app, onGoSearch }: Props) {
                 onClick={() => setCandidateGenre(g)}
                 className={`px-2.5 py-1 text-xs rounded-full border transition ${
                   candidateGenre === g
-                    ? 'bg-orange-500 text-white border-orange-500'
+                    ? 'bg-orange-500 text-orange-950 border-orange-500'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
                 }`}
               >
@@ -380,25 +380,25 @@ function CustomRecipeAddForm({
 
   return (
     <form
-      className="mt-2 shrink-0 rounded-lg border border-dashed border-violet-200 bg-violet-50/40 px-2 py-1.5"
+      className="mt-2 shrink-0 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-2 py-1.5"
       onSubmit={(e) => {
         e.preventDefault()
         submit()
       }}
     >
-      <p className="mb-1 text-[10px] font-medium text-violet-700">候補にない料理を手入力</p>
+      <p className="mb-1 text-[10px] font-medium text-neutral-600">候補にない料理を手入力</p>
       <div className="flex gap-1.5">
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="例：残り物カレー"
-          className="min-w-0 flex-1 px-2 py-1 border border-violet-200 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-violet-300 bg-white"
+          className="min-w-0 flex-1 px-2 py-1 border border-neutral-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-neutral-400 bg-white"
         />
         <select
           value={dishRole}
           onChange={(e) => setDishRole(e.target.value as DishRole)}
-          className="shrink-0 px-1.5 py-1 border border-violet-200 rounded-md text-xs bg-white"
+          className="shrink-0 px-1.5 py-1 border border-neutral-300 rounded-md text-xs bg-white"
         >
           {DISH_ROLES.map((role) => (
             <option key={role} value={role}>
@@ -409,7 +409,7 @@ function CustomRecipeAddForm({
         <button
           type="submit"
           disabled={!name.trim()}
-          className="shrink-0 rounded-md bg-violet-500 px-2 py-1 text-xs font-medium text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-md bg-orange-500 px-2 py-1 text-xs font-medium text-orange-950 hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           追加
         </button>
@@ -513,7 +513,7 @@ function RecipeStagingPanel({
                     e.stopPropagation()
                     onPlace(staged.id)
                   }}
-                  className="shrink-0 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-orange-600"
+                  className="shrink-0 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-semibold text-orange-950 hover:bg-orange-600"
                 >
                   追加
                 </button>
@@ -574,7 +574,7 @@ function CandidateCard({
       onDragStart={onDragStart}
       className={`flex cursor-grab active:cursor-grabbing items-center rounded-lg border bg-gray-50 hover:border-orange-200 ${
         compact ? 'h-full gap-1.5 p-1.5' : 'gap-2 p-2 rounded-xl'
-      } ${isFavorite ? 'border-pink-300' : recipe.custom ? 'border-violet-200' : 'border-gray-100'}`}
+      } ${isFavorite ? 'border-neutral-400' : recipe.custom ? 'border-neutral-300' : 'border-gray-100'}`}
     >
       <RecipePhoto recipe={recipe} size={compact ? 'xs' : 'sm'} />
       <div className="min-w-0 flex-1">
@@ -617,7 +617,7 @@ function CandidateCard({
           e.stopPropagation()
           onQuickAdd()
         }}
-        className={`shrink-0 rounded-lg bg-orange-500 font-semibold text-white hover:bg-orange-600 ${
+        className={`shrink-0 rounded-lg bg-orange-500 font-semibold text-orange-950 hover:bg-orange-600 ${
           compact ? 'px-2.5 py-1 text-sm' : 'px-3 py-1.5 text-sm'
         }`}
       >

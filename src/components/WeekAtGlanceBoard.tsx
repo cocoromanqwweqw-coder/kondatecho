@@ -250,9 +250,9 @@ export function WeekAtGlanceBoard({
                 <span
                   className={`rounded-full px-1.5 py-px text-[9px] font-medium ${
                     filled === 3
-                      ? 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-orange-500 text-orange-950'
                       : filled > 0
-                        ? 'bg-amber-100 text-amber-700'
+                        ? 'bg-neutral-200 text-neutral-700'
                         : 'bg-gray-100 text-gray-500'
                   }`}
                 >

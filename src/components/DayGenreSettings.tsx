@@ -37,7 +37,7 @@ export function DayGenreSettings({ app, dayIndex, compact = false }: Props) {
               title={genre}
               className={`h-8 min-w-[2rem] rounded-lg px-1.5 text-[10px] font-medium transition-all sm:h-9 sm:min-w-[2.25rem] sm:text-xs ${
                 on
-                  ? 'bg-orange-500 text-white shadow-sm'
+                  ? 'bg-orange-500 text-orange-950 shadow-sm'
                   : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
             >
@@ -115,7 +115,7 @@ export function DayGenreSettings({ app, dayIndex, compact = false }: Props) {
                           aria-label={`${day}曜 ${genre} ${on ? 'オフにする' : 'オンにする'}`}
                           className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md text-[9px] sm:text-[10px] font-medium transition-all ${
                             on
-                              ? 'bg-orange-500 text-white shadow-sm'
+                              ? 'bg-orange-500 text-orange-950 shadow-sm'
                               : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                           }`}
                         >
@@ -154,7 +154,7 @@ export function DayGenreSettings({ app, dayIndex, compact = false }: Props) {
             return (
               <span
                 key={day}
-                className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full"
+                className="text-[10px] px-2 py-0.5 bg-neutral-100 text-neutral-700 rounded-full"
               >
                 {day}: {enabled.map((g) => GENRE_SHORT[g]).join('')}
               </span>

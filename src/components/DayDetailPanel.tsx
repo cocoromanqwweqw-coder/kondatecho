@@ -19,8 +19,6 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
     fillDayEmpty,
     clearDay,
     favoriteDayRecipes,
-    setDayShoppingNote,
-    setDayPrepNote,
     setDayRiceIncluded,
     setSlot,
   } = app
@@ -28,8 +26,6 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
 
   const insight = useMemo(() => buildDayInsight(state, dayIndex), [state, dayIndex])
   const n = insight.nutrition
-  const shoppingNote = state.dayShoppingNotes[dayIndex] ?? ''
-  const prepNote = state.dayPrepNotes[dayIndex] ?? ''
 
   return (
     <div className="bg-white rounded-xl p-2.5 shadow-sm border border-orange-100 space-y-2.5">
@@ -46,7 +42,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
             <button
               type="button"
               onClick={() => fillDayEmpty(dayIndex)}
-              className="text-[10px] px-2 py-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600 transition"
+              className="text-[10px] px-2 py-1 rounded-md bg-orange-500 text-orange-950 hover:bg-orange-600 transition"
             >
               空きを埋める
             </button>
@@ -55,7 +51,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
             <button
               type="button"
               onClick={() => favoriteDayRecipes(dayIndex)}
-              className="text-[10px] px-2 py-1 rounded-md border border-pink-200 text-pink-600 hover:bg-pink-50 transition"
+              className="text-[10px] px-2 py-1 rounded-md border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition"
             >
               ⭐ お気に入り
             </button>
@@ -158,10 +154,10 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
               PFC P{insight.pfc.proteinPct}% / F{insight.pfc.fatPct}% / C{insight.pfc.carbsPct}%
               （たんぱく{n.proteinG}g · 脂質{n.fatG}g · 炭水化物{n.carbsG}g）
             </p>
-            <div className="flex h-2 overflow-hidden rounded-full bg-white">
-              <div className="bg-sky-400" style={{ width: `${insight.pfc.proteinPct}%` }} />
-              <div className="bg-amber-400" style={{ width: `${insight.pfc.fatPct}%` }} />
-              <div className="bg-emerald-400" style={{ width: `${insight.pfc.carbsPct}%` }} />
+            <div className="flex h-2 overflow-hidden rounded-full bg-neutral-100">
+              <div className="bg-orange-500" style={{ width: `${insight.pfc.proteinPct}%` }} />
+              <div className="bg-neutral-500" style={{ width: `${insight.pfc.fatPct}%` }} />
+              <div className="bg-neutral-300" style={{ width: `${insight.pfc.carbsPct}%` }} />
             </div>
           </div>
           {insight.missingNutrients.length > 0 ? (
@@ -169,14 +165,14 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
               不足しがち: {insight.missingNutrients.join(' · ')}
             </p>
           ) : (
-            <p className="text-xs text-emerald-600">主要栄養の偏りは少なめです</p>
+            <p className="text-xs text-neutral-600">主要栄養の偏りは少なめです</p>
           )}
           {insight.healthTags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {insight.healthTags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200"
                 >
                   {HEALTH_TAG_SHORT[tag]}
                 </span>
@@ -206,7 +202,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
       )}
 
       {insight.wantToUseHits.length > 0 && (
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 space-y-1">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-1">
           <h4 className="text-sm font-bold text-gray-700">🎯 使いたい食材が入っています</h4>
           {insight.wantToUseHits.map((hit) => (
             <p key={hit.name} className="text-xs text-gray-600">
@@ -217,7 +213,7 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
       )}
 
       {insight.duplicateRecipes.length > 0 && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-1">
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-1">
           <h4 className="text-sm font-bold text-gray-700">他の日と重複</h4>
           {insight.duplicateRecipes.map((dup) => (
             <p key={dup.recipeId} className="text-xs text-gray-600">
@@ -268,31 +264,6 @@ export function DayDetailPanel({ app, dayIndex, onGoSearch }: Props) {
           </div>
         </div>
       )}
-
-      <div
-        className={`grid gap-3 ${isDesktopLayout ? 'grid-cols-2' : 'grid-cols-1'}`}
-      >
-        <label className="block">
-          <span className="text-xs font-medium text-gray-600 mb-1 block">買い物メモ</span>
-          <textarea
-            value={shoppingNote}
-            onChange={(e) => setDayShoppingNote(dayIndex, e.target.value)}
-            placeholder="この日の買い物リスト…"
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-orange-300 resize-none"
-          />
-        </label>
-        <label className="block">
-          <span className="text-xs font-medium text-gray-600 mb-1 block">下ごしらえメモ</span>
-          <textarea
-            value={prepNote}
-            onChange={(e) => setDayPrepNote(dayIndex, e.target.value)}
-            placeholder="作り置き・前日準備…"
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-orange-300 resize-none"
-          />
-        </label>
-      </div>
 
       {onGoSearch && insight.filled < 3 && (
         <button

@@ -1,4 +1,4 @@
-import { RECIPES, getRecipeSearchIndex } from '../data/recipes'
+import { getRecipes, getRecipeSearchIndex } from '../data/recipes'
 import { matchesIngredientSearch } from './japaneseText'
 import {
   buildRecipeSearchIndex,
@@ -47,7 +47,7 @@ function scoreRecipe(recipe: Recipe, ctx: ScoreContext): number {
     score -= 200
 
   const sameGenreCount = [...ctx.usedRecipeIds].filter((id) => {
-    const r = RECIPES.find((x) => x.id === id)
+    const r = getRecipes().find((x) => x.id === id)
     return r?.genre === recipe.genre
   }).length
   if (sameGenreCount >= 2) score -= 10
@@ -90,7 +90,7 @@ function duplicateKeyForRecipe(recipe: Recipe): string {
 }
 
 function duplicateKeyForRecipeId(recipeId: string): string {
-  const recipe = RECIPES.find((r) => r.id === recipeId)
+  const recipe = getRecipes().find((r) => r.id === recipeId)
   return recipe ? duplicateKeyForRecipe(recipe) : recipeId
 }
 
@@ -117,7 +117,7 @@ export function generateWeeklyPlan(state: AppState): PlannedMeal[] {
 
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     for (const mealType of MEAL_TYPES) {
-      let candidates = RECIPES
+      let candidates = getRecipes()
       const disabledGenres = state.dayDisabledGenres[dayIndex] ?? []
       if (disabledGenres.length > 0) {
         const filtered = candidates.filter((r) => !disabledGenres.includes(r.genre))
@@ -166,7 +166,7 @@ export function getCandidateRecipes(
 ): Recipe[] {
   let list = [
     ...getCustomRecipesForRole(state, role),
-    ...RECIPES.filter((r) => r.dishRole === role),
+    ...getRecipes().filter((r) => r.dishRole === role),
   ]
   const disabled = state.dayDisabledGenres[dayIndex] ?? []
   if (disabled.length > 0) {

@@ -15,8 +15,8 @@ export function DisplayModeToggle() {
       role="group"
       aria-label="表示モード"
     >
-      <span className="hidden text-xs text-orange-100/90 sm:inline">表示</span>
-      <div className="flex rounded-lg border border-orange-400/40 bg-orange-600/30 p-0.5">
+      <span className="hidden text-xs text-neutral-400 sm:inline">表示</span>
+      <div className="flex rounded-md border border-neutral-300 bg-white p-0.5">
         {OPTIONS.map((opt) => (
           <button
             key={opt.id}
@@ -24,10 +24,10 @@ export function DisplayModeToggle() {
             onClick={() => setMode(opt.id)}
             aria-pressed={mode === opt.id}
             title={`${opt.label}表示`}
-            className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+            className={`rounded px-2 py-1 text-xs font-medium transition ${
               mode === opt.id
-                ? 'bg-white text-orange-700 shadow-sm'
-                : 'text-orange-50 hover:bg-orange-500/40'
+                ? 'bg-orange-500 text-orange-950'
+                : 'text-neutral-500 hover:bg-orange-50 hover:text-orange-800'
             }`}
           >
             {opt.icon}

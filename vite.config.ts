@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_APP_BUILD_TIME': JSON.stringify(Date.now()),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -19,6 +22,12 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,svg,webmanifest}'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/recipes-update\.json/i,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
     }),
   ],

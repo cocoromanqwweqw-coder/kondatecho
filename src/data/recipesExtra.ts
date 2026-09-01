@@ -1,6 +1,6 @@
 import type { Recipe } from '../types'
 
-/** 更新時に別セットとして表示する追加レシピ（各ジャンル16〜30件目） */
+/** 更新ファイル public/recipes-update.json にも載せる追加レシピ（各ジャンル16〜30件目） */
 export const RECIPES_EXTRA: Recipe[] = [
   // 和食 w16-w30
   { id: 'w16', name: '牛丼', genre: '和食', ingredients: ['牛肉', '玉ねぎ', 'ご飯', 'だし', '醤油', 'みりん'], cookingTime: 20, difficulty: '簡単', description: '牛肉の甘辛丼' },

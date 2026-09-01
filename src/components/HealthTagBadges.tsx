@@ -17,13 +17,13 @@ export function HealthTagBadges({ tags, className = '', max = 4 }: Props) {
       {visible.map((tag) => (
         <span
           key={tag}
-          className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100"
+          className="text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-100 text-neutral-700 border border-neutral-200"
         >
           {HEALTH_TAG_SHORT[tag]}
         </span>
       ))}
       {rest > 0 && (
-        <span className="text-[10px] px-1.5 py-0.5 text-emerald-600">+{rest}</span>
+        <span className="text-[10px] px-1.5 py-0.5 text-neutral-500">+{rest}</span>
       )}
     </div>
   )

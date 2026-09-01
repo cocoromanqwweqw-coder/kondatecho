@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DishRole, Recipe } from '../types'
 import { DAYS, DISH_ROLE_EMOJI } from '../types'
 import type { useAppState } from '../hooks/useAppState'
 import { formatDate, getWeekDates } from '../lib/storage'
-import { ingredientMatch } from '../lib/mealPlanner'
 import {
   buildPlanShoppingItems,
   buildWeekMenus,
@@ -11,6 +10,7 @@ import {
 } from '../lib/shoppingList'
 import { InventoryPanel } from './InventoryPanel'
 import { RecipeDetailPopup } from './RecipeDetailPopup'
+import { useDisplayMode } from '../hooks/useDisplayMode'
 
 type App = ReturnType<typeof useAppState>
 
@@ -25,55 +25,95 @@ type Detail = {
   dishRole: DishRole
 }
 
+function FreeMemoField({
+  value,
+  onCommit,
+}: {
+  value: string
+  onCommit: (note: string) => void
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  const composingRef = useRef(false)
+  const timerRef = useRef(0)
+  const onCommitRef = useRef(onCommit)
+  onCommitRef.current = onCommit
+
+  const flush = () => {
+    window.clearTimeout(timerRef.current)
+    const next = ref.current?.value ?? ''
+    onCommitRef.current(next)
+  }
+
+  const scheduleFlush = () => {
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(flush, 500)
+  }
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), [])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    if (composingRef.current) return
+    if (document.activeElement === el) return
+    if (el.value !== value) el.value = value
+  }, [value])
+
+  return (
+    <label className="mt-2 block border-t border-gray-100 pt-2">
+      <span className="mb-1 block text-[11px] font-medium text-gray-500">フリーメモ</span>
+      <textarea
+        ref={ref}
+        defaultValue={value}
+        onCompositionStart={() => {
+          composingRef.current = true
+          window.clearTimeout(timerRef.current)
+        }}
+        onCompositionEnd={() => {
+          composingRef.current = false
+          scheduleFlush()
+        }}
+        onChange={() => {
+          if (composingRef.current) return
+          scheduleFlush()
+        }}
+        onBlur={flush}
+        placeholder="店・予算・忘れものなど、自由に…"
+        rows={4}
+        className="w-full resize-y rounded-lg border border-gray-200 px-3 py-1.5 text-sm leading-snug focus:outline-none focus:ring-2 focus:ring-orange-300"
+      />
+    </label>
+  )
+}
+
 export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
   const {
     state,
     toggleFavorite,
     toggleShoppingChecked,
-    addExtraShoppingItem,
-    toggleExtraShoppingChecked,
-    removeExtraShoppingItem,
     moveCheckedShoppingToInventory,
+    setShoppingFreeMemo,
   } = app
-  const [extraName, setExtraName] = useState('')
+  const { isDesktopLayout } = useDisplayMode()
   const [detail, setDetail] = useState<Detail | null>(null)
 
   const weekDates = getWeekDates(state.weekStartDate)
   const menus = useMemo(() => buildWeekMenus(state), [state])
   const planItems = useMemo(() => buildPlanShoppingItems(state), [state])
 
-  const extraItems = useMemo(
-    () =>
-      state.extraShoppingItems.filter(
-        (item) => !planItems.some((plan) => ingredientMatch(plan.name, item.name))
-      ),
-    [planItems, state.extraShoppingItems]
-  )
-  const checkedPlanCount = planItems.filter((item) =>
+  const checkedCount = planItems.filter((item) =>
     isShoppingChecked(item.name, state.shoppingCheckedNames)
   ).length
-  const checkedExtraCount = extraItems.filter((item) => item.checked).length
-  const checkedCount = checkedPlanCount + checkedExtraCount
-  const listCount = planItems.length + extraItems.length
-  const dayNotes = DAYS.map((weekday, dayIndex) => ({
-    dayIndex,
-    weekday,
-    note: state.dayShoppingNotes[dayIndex]?.trim() ?? '',
-  })).filter((row) => row.note)
-
-  const handleAddExtra = () => {
-    addExtraShoppingItem(extraName)
-    setExtraName('')
-  }
+  const listCount = planItems.length
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-        <div className="mb-3 flex items-start justify-between gap-3">
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-orange-100 bg-white p-3.5 shadow-sm">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-gray-800">今週のレシピ</h2>
-            <p className="mt-0.5 text-sm text-gray-500">
-              {formatDate(weekDates[0])} 〜 {formatDate(weekDates[6])} の夜ごはん
+            <h2 className="text-base font-bold text-gray-800">今週のレシピ</h2>
+            <p className="text-xs text-gray-500">
+              {formatDate(weekDates[0])} 〜 {formatDate(weekDates[6])}
             </p>
           </div>
           <button
@@ -87,176 +127,99 @@ export function ShoppingMemoPanel({ app, onGoPlan }: Props) {
 
         <div className="divide-y divide-gray-50">
           {menus.map((day) => (
-            <div key={day.dayIndex} className="py-3 first:pt-0 last:pb-0">
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-gray-700">
-                  {day.weekday} {day.dateLabel}
-                  <span className="ml-2 text-xs font-medium text-gray-400">
-                    {day.filled}/3
-                  </span>
-                </p>
-                {day.filled === 0 && (
-                  <button
-                    type="button"
-                    onClick={onGoPlan}
-                    className="text-xs text-orange-500 hover:text-orange-700"
-                  >
-                    週間献立へ
-                  </button>
+            <div key={day.dayIndex} className="flex items-center gap-2 py-1">
+              <p className="w-[4.25rem] shrink-0 text-xs font-bold text-gray-700">
+                {day.weekday} {day.dateLabel}
+              </p>
+              <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+                {day.slots.map((slot) =>
+                  slot.recipe ? (
+                    <button
+                      key={slot.role}
+                      type="button"
+                      onClick={() =>
+                        setDetail({
+                          recipe: slot.recipe!,
+                          dayIndex: day.dayIndex,
+                          dishRole: slot.role,
+                        })
+                      }
+                      title={slot.recipe.name}
+                      className="min-w-0 truncate rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium text-gray-800 hover:bg-orange-100"
+                    >
+                      {DISH_ROLE_EMOJI[slot.role]} {slot.recipe.name}
+                    </button>
+                  ) : (
+                    <span
+                      key={slot.role}
+                      className="shrink-0 rounded-md bg-gray-50 px-1.5 py-0.5 text-[11px] text-gray-400"
+                    >
+                      {DISH_ROLE_EMOJI[slot.role]}
+                    </span>
+                  )
                 )}
               </div>
-              <ul className="space-y-1">
-                {day.slots.map((slot) => (
-                  <li key={slot.role}>
-                    {slot.recipe ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setDetail({
-                            recipe: slot.recipe!,
-                            dayIndex: day.dayIndex,
-                            dishRole: slot.role,
-                          })
-                        }
-                        className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-sm text-gray-800 hover:bg-orange-50"
-                      >
-                        <span className="w-10 shrink-0 text-xs text-gray-400">
-                          {DISH_ROLE_EMOJI[slot.role]}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate font-medium">
-                          {slot.recipe.name}
-                        </span>
-                      </button>
-                    ) : (
-                      <p className="flex items-center gap-2 px-1.5 py-1 text-sm text-gray-400">
-                        <span className="w-10 shrink-0 text-xs">
-                          {DISH_ROLE_EMOJI[slot.role]}
-                        </span>
-                        未定
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-orange-100 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-800">買い物メモ</h2>
-        <p className="mt-0.5 text-sm text-gray-500">
-          献立の材料のうち、在庫にないものをまとめます。チェックして在庫へ移せます
-        </p>
-
-        <div className="mt-4 flex gap-2">
-          <input
-            type="text"
-            value={extraName}
-            onChange={(e) => setExtraName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddExtra()}
-            placeholder="手で追加（例: 牛乳）"
-            className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
-          />
-          <button
-            type="button"
-            onClick={handleAddExtra}
-            className="shrink-0 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-orange-600"
-          >
-            追加
-          </button>
-        </div>
+      <div className="rounded-2xl border border-orange-100 bg-white p-3.5 shadow-sm">
+        <h2 className="text-base font-bold text-gray-800">買い物メモ</h2>
+        <p className="text-xs text-gray-500">在庫にない材料。チェックして在庫へ</p>
 
         {checkedCount > 0 && (
           <button
             type="button"
             onClick={moveCheckedShoppingToInventory}
-            className="mt-3 w-full rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-medium text-orange-700 hover:bg-orange-100"
+            className="mt-2 w-full rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-100"
           >
             チェックした {checkedCount} 件を在庫へ
           </button>
         )}
 
         {listCount === 0 ? (
-          <p className="mt-4 rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-400">
+          <p className="mt-2 rounded-lg bg-gray-50 px-3 py-3 text-center text-xs text-gray-400">
             献立を入れると、足りない食材がここに出ます
           </p>
         ) : (
-          <ul className="mt-4 divide-y divide-gray-50">
+          <ul
+            className={`mt-2 max-h-52 overflow-y-auto ${
+              isDesktopLayout
+                ? 'grid grid-cols-3 gap-x-3 gap-y-0.5'
+                : 'grid grid-cols-2 gap-x-2 gap-y-0.5'
+            }`}
+          >
             {planItems.map((item) => {
               const checked = isShoppingChecked(item.name, state.shoppingCheckedNames)
               const dayLabel = item.days.map((d) => DAYS[d]).join('・')
               return (
-                <li key={`plan-${item.name}`} className="flex items-start gap-3 py-2.5">
+                <li key={`plan-${item.name}`} className="flex min-w-0 items-center gap-1.5 py-0.5">
                   <input
                     type="checkbox"
                     checked={checked}
                     onChange={() => toggleShoppingChecked(item.name)}
-                    className="mt-1 h-4 w-4 accent-orange-500"
+                    className="h-3.5 w-3.5 shrink-0 accent-orange-500"
                     aria-label={`${item.name}を買った`}
                   />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`text-sm font-medium ${checked ? 'text-gray-400 line-through' : 'text-gray-800'}`}
-                    >
-                      {item.name}
-                      {item.count > 1 && (
-                        <span className="ml-1.5 text-xs font-normal text-gray-400">
-                          ×{item.count}
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-400">
+                  <p
+                    className={`min-w-0 flex-1 truncate text-sm ${checked ? 'text-gray-400 line-through' : 'text-gray-800'}`}
+                  >
+                    {item.name}
+                    {item.count > 1 && (
+                      <span className="ml-0.5 text-xs text-gray-400">×{item.count}</span>
+                    )}
+                    <span className="ml-1 text-[11px] font-normal text-gray-400">
                       {dayLabel}
-                      {item.recipeNames.length > 0 ? ` · ${item.recipeNames.join('、')}` : ''}
-                    </p>
-                  </div>
+                    </span>
+                  </p>
                 </li>
               )
             })}
-            {extraItems.map((item) => (
-              <li key={item.id} className="flex items-start gap-3 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  onChange={() => toggleExtraShoppingChecked(item.id)}
-                  className="mt-1 h-4 w-4 accent-orange-500"
-                  aria-label={`${item.name}を買った`}
-                />
-                <div className="min-w-0 flex-1">
-                  <p
-                    className={`text-sm font-medium ${item.checked ? 'text-gray-400 line-through' : 'text-gray-800'}`}
-                  >
-                    {item.name}
-                    <span className="ml-1.5 text-xs font-normal text-gray-400">手入力</span>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeExtraShoppingItem(item.id)}
-                  className="text-sm text-gray-300 transition hover:text-red-400"
-                  aria-label={`${item.name}を削除`}
-                >
-                  ✕
-                </button>
-              </li>
-            ))}
           </ul>
         )}
 
-        {dayNotes.length > 0 && (
-          <div className="mt-4 border-t border-gray-100 pt-4">
-            <p className="mb-2 text-xs font-medium text-gray-500">曜日メモ</p>
-            <ul className="space-y-1.5">
-              {dayNotes.map((row) => (
-                <li key={row.dayIndex} className="text-sm text-gray-600">
-                  <span className="mr-2 font-medium text-gray-500">{row.weekday}</span>
-                  {row.note}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <FreeMemoField value={state.shoppingFreeMemo} onCommit={setShoppingFreeMemo} />
       </div>
 
       <InventoryPanel app={app} />

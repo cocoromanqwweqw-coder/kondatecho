@@ -58,7 +58,7 @@ function RiceBowlIcon({ enabled, size }: { enabled: boolean; size: number }) {
       <path
         d="M5 15 C5 24 10 27 16 27 C22 27 27 24 27 15 L25 13 C25 22 21 24 16 24 C11 24 7 22 7 13 Z"
         fill={enabled ? '#f5f5f4' : '#e7e5e4'}
-        stroke={enabled ? '#d97706' : '#a8a29e'}
+        stroke={enabled ? '#111111' : '#a8a29e'}
         strokeWidth="1.2"
       />
       <ellipse cx="16" cy="14" rx="9" ry="4.5" fill={enabled ? '#fef9c3' : '#d6d3d1'} />

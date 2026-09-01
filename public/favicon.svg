@@ -8,17 +8,16 @@
     rx="90"
     fill="none"
     stroke="#000000"
-    stroke-width="22"
+    stroke-width="16"
   />
 
   <g
     fill="none"
     stroke="#000000"
-    stroke-width="14"
+    stroke-width="10"
     stroke-linecap="round"
     stroke-linejoin="round"
   >
-    <!-- ごはん（雲型の盛り） -->
     <path
       d="M142 318
          C140 278 156 242 186 226
@@ -28,15 +27,11 @@
          C316 184 336 204 326 226
          C356 242 372 278 370 318"
     />
-    <!-- お茶碗の縁 -->
     <path d="M142 318 H370"/>
-    <!-- お茶碗（半円） -->
     <path d="M142 318 A114 114 0 0 0 370 318"/>
-    <!-- 高台 -->
     <path d="M224 428 V448 H288 V428"/>
-    <!-- ごはんの模様 -->
-    <path d="M220 232 Q236 218 252 232" stroke-width="12"/>
-    <path d="M270 230 Q286 216 302 230" stroke-width="12"/>
-    <path d="M238 262 Q256 248 274 262" stroke-width="12"/>
+    <path d="M220 232 Q236 218 252 232" stroke-width="8"/>
+    <path d="M270 230 Q286 216 302 230" stroke-width="8"/>
+    <path d="M238 262 Q256 248 274 262" stroke-width="8"/>
   </g>
 </svg>

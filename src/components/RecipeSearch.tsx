@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import type { useAppState } from '../hooks/useAppState'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { searchRecipes } from '../data/recipes'
+import { getRecipeCatalogRevision, subscribeRecipeCatalog } from '../lib/recipeCatalogState'
 import { DISH_ROLE_EMOJI, GENRES } from '../types'
 import { getInventoryUsageCount, getMissingIngredients } from '../lib/mealPlanner'
 import { matchesIngredientSearch } from '../lib/japaneseText'
@@ -38,6 +39,11 @@ export function RecipeSearch({
   onBackToPlan,
 }: Props) {
   const { state, toggleFavorite, togglePreferredGenre, addToStaging } = app
+  const catalogRevision = useSyncExternalStore(
+    subscribeRecipeCatalog,
+    getRecipeCatalogRevision,
+    getRecipeCatalogRevision
+  )
   const [genre, setGenre] = useState<string>('すべて')
   const [query, setQuery] = useState(initialQuery)
   const [ingredientFilter, setIngredientFilter] = useState('')
@@ -58,7 +64,7 @@ export function RecipeSearch({
         query: debouncedQuery || undefined,
         ingredient: debouncedIngredient || undefined,
       }),
-    [genre, debouncedQuery, debouncedIngredient]
+    [genre, debouncedQuery, debouncedIngredient, catalogRevision]
   )
 
   const sorted = useMemo(
@@ -88,7 +94,7 @@ export function RecipeSearch({
             <button
               type="button"
               onClick={onBackToPlan}
-              className="shrink-0 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 transition"
+              className="shrink-0 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-orange-950 hover:bg-orange-600 transition"
             >
               週間献立へ戻る
             </button>
@@ -110,7 +116,7 @@ export function RecipeSearch({
                 onClick={() => setGenre('すべて')}
                 className={`px-2.5 py-1 text-xs rounded-full border transition ${
                   genre === 'すべて'
-                    ? 'bg-orange-500 text-white border-orange-500'
+                    ? 'bg-orange-500 text-orange-950 border-orange-500'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
                 }`}
               >
@@ -122,7 +128,7 @@ export function RecipeSearch({
                   onClick={() => setGenre(g)}
                   className={`px-2.5 py-1 text-xs rounded-full border transition ${
                     genre === g
-                      ? 'bg-orange-500 text-white border-orange-500'
+                      ? 'bg-orange-500 text-orange-950 border-orange-500'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-orange-300'
                   }`}
                 >
@@ -143,8 +149,8 @@ export function RecipeSearch({
                   onClick={() => togglePreferredGenre(g)}
                   className={`px-2.5 py-1 text-xs rounded-full border transition ${
                     state.preferredGenres.includes(g)
-                      ? 'bg-blue-500 text-white border-blue-500'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'
+                      ? 'bg-orange-500 text-orange-950 border-orange-500'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-neutral-400'
                   }`}
                 >
                   {state.preferredGenres.includes(g) ? '✓' : ''}{g}
@@ -188,10 +194,10 @@ export function RecipeSearch({
               key={recipe.id}
               className={`bg-white rounded-xl border transition ${
                 justStaged
-                  ? 'border-amber-400 bg-amber-50/40'
+                  ? 'border-neutral-900 bg-neutral-50'
                   : isWant
-                    ? 'border-green-300 bg-green-50/30'
-                    : 'border-orange-100'
+                    ? 'border-neutral-400 bg-white'
+                    : 'border-neutral-200'
               }`}
             >
               <div className="flex items-center gap-2 px-2.5 py-2">
@@ -217,7 +223,7 @@ export function RecipeSearch({
                       {recipe.cookingTime}分
                     </span>
                     {usage > 0 && inventoryNames.length > 0 && (
-                      <span className="text-[10px] text-green-600 shrink-0">
+                      <span className="text-[10px] text-neutral-600 shrink-0">
                         在庫{usage}/{recipe.ingredients.length}
                       </span>
                     )}
@@ -259,7 +265,7 @@ export function RecipeSearch({
                           key={ing}
                           className={`text-[10px] px-1.5 py-0.5 rounded ${
                             inStock
-                              ? 'bg-green-100 text-green-700'
+                              ? 'bg-orange-500 text-orange-950'
                               : 'bg-gray-100 text-gray-500'
                           }`}
                         >

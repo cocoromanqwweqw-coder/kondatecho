@@ -8,13 +8,13 @@
     rx="90"
     fill="none"
     stroke="#000000"
-    stroke-width="22"
+    stroke-width="16"
   />
 
   <g
     fill="none"
     stroke="#000000"
-    stroke-width="14"
+    stroke-width="10"
     stroke-linecap="round"
     stroke-linejoin="round"
   >
@@ -35,8 +35,8 @@
     <!-- 高台 -->
     <path d="M224 428 V448 H288 V428"/>
     <!-- ごはんの模様 -->
-    <path d="M220 232 Q236 218 252 232" stroke-width="12"/>
-    <path d="M270 230 Q286 216 302 230" stroke-width="12"/>
-    <path d="M238 262 Q256 248 274 262" stroke-width="12"/>
+    <path d="M220 232 Q236 218 252 232" stroke-width="8"/>
+    <path d="M270 230 Q286 216 302 230" stroke-width="8"/>
+    <path d="M238 262 Q256 248 274 262" stroke-width="8"/>
   </g>
 </svg>

@@ -131,6 +131,8 @@ export interface AppState {
   shoppingCheckedNames: string[]
   /** 買い物リストへの手入力 */
   extraShoppingItems: ExtraShoppingItem[]
+  /** 買い物メモのフリー記入欄 */
+  shoppingFreeMemo: string
   /** 曜日ごとの下ごしらえ・作り置きメモ */
   dayPrepNotes: Partial<Record<number, string>>
   /** 曜日ごとのご飯をカロリーに含めるか（未設定時は献立から自動判定） */

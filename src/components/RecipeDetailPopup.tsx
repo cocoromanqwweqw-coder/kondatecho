@@ -134,7 +134,7 @@ export function RecipeDetailPopup({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl bg-orange-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-orange-600"
+              className="flex-1 rounded-xl bg-orange-500 px-3 py-2.5 text-sm font-medium text-orange-950 hover:bg-orange-600"
             >
               閉じる
             </button>

@@ -13,6 +13,7 @@ const defaultState: AppState = {
   dayShoppingNotes: {},
   shoppingCheckedNames: [],
   extraShoppingItems: [],
+  shoppingFreeMemo: '',
   dayPrepNotes: {},
   dayRiceIncluded: {},
   customRecipes: [],
@@ -94,6 +95,8 @@ export function loadState(): AppState {
         name: item.name.trim(),
         checked: Boolean(item.checked),
       }))
+    parsed.shoppingFreeMemo =
+      typeof parsed.shoppingFreeMemo === 'string' ? parsed.shoppingFreeMemo : ''
     parsed.dayPrepNotes = parsed.dayPrepNotes ?? {}
     parsed.dayRiceIncluded = parsed.dayRiceIncluded ?? {}
     parsed.customRecipes = (parsed.customRecipes ?? []).filter(

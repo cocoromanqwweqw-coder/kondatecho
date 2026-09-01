@@ -1,6 +1,39 @@
 @import "tailwindcss";
 
+/* 白バック + オリーブカーキ（茶と緑のあいだ）。黒の塗りボタンは使わない */
+@theme {
+  --color-orange-50: #f6f5ee;
+  --color-orange-100: #ebe9dc;
+  --color-orange-200: #d8d4bc;
+  --color-orange-300: #ddd6bc;
+  --color-orange-400: #d4cbb0;
+  --color-orange-500: #c6bda0;
+  --color-orange-600: #b3aa8c;
+  --color-orange-700: #52503a;
+  --color-orange-800: #3f3d2e;
+  --color-orange-900: #2c2b22;
+  --color-orange-950: #1c1b16;
+
+  --color-amber-50: #f6f5ee;
+  --color-amber-100: #ebe9dc;
+  --color-amber-200: #d8d4bc;
+  --color-amber-300: #ddd6bc;
+  --color-amber-400: #d4cbb0;
+  --color-amber-500: #c6bda0;
+  --color-amber-600: #b3aa8c;
+  --color-amber-700: #52503a;
+  --color-amber-800: #3f3d2e;
+  --color-amber-900: #2c2b22;
+  --color-amber-950: #1c1b16;
+}
+
+html,
 body {
   margin: 0;
+  background: #fff;
+  color: #111;
+}
+
+body {
   padding-top: env(safe-area-inset-top);
 }

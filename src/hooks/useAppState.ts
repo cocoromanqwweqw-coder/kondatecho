@@ -1,13 +1,23 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, Recipe } from '../types'
 import { DISH_ROLES, GENRES } from '../types'
 import { loadState, saveState } from '../lib/storage'
 import { resolveRecipe } from '../lib/recipeResolver'
 import { generateWeeklyPlan, getCandidateRecipes, getRecipeDuplicateKey, ingredientMatch } from '../lib/mealPlanner'
 import { buildPlanShoppingItems, isShoppingChecked, toggleCheckedName } from '../lib/shoppingList'
+import {
+  getRecipeCatalogRevision,
+  subscribeRecipeCatalog,
+} from '../lib/recipeCatalogState'
 
 export function useAppState() {
   const [state, setState] = useState<AppState>(() => loadState())
+  const catalogRevision = useSyncExternalStore(
+    subscribeRecipeCatalog,
+    getRecipeCatalogRevision,
+    getRecipeCatalogRevision
+  )
+  void catalogRevision
 
   useEffect(() => {
     saveState(state)
@@ -434,22 +444,10 @@ export function useAppState() {
     })
   }, [])
 
-  const setDayShoppingNote = useCallback((dayIndex: number, note: string) => {
-    setState((prev) => {
-      const next = { ...prev.dayShoppingNotes }
-      if (note.trim() === '') delete next[dayIndex]
-      else next[dayIndex] = note
-      return { ...prev, dayShoppingNotes: next }
-    })
-  }, [])
-
-  const setDayPrepNote = useCallback((dayIndex: number, note: string) => {
-    setState((prev) => {
-      const next = { ...prev.dayPrepNotes }
-      if (note.trim() === '') delete next[dayIndex]
-      else next[dayIndex] = note
-      return { ...prev, dayPrepNotes: next }
-    })
+  const setShoppingFreeMemo = useCallback((note: string) => {
+    setState((prev) =>
+      prev.shoppingFreeMemo === note ? prev : { ...prev, shoppingFreeMemo: note }
+    )
   }, [])
 
   const setDayRiceIncluded = useCallback((dayIndex: number, included: boolean) => {
@@ -488,8 +486,7 @@ export function useAppState() {
     clearDay,
     fillDayEmpty,
     favoriteDayRecipes,
-    setDayShoppingNote,
-    setDayPrepNote,
+    setShoppingFreeMemo,
     setDayRiceIncluded,
   }
 }

@@ -15,6 +15,7 @@ import {
   filterIndexedRecipes,
   type RecipeSearchIndexEntry,
 } from '../lib/recipeSearchIndex'
+import { getLiveIndex, getLiveRecipes } from '../lib/recipeCatalogState'
 
 const BASE_RECIPES: Recipe[] = [
   // 和食
@@ -120,11 +121,11 @@ const BASE_RECIPES: Recipe[] = [
   { id: 'e15', name: 'トムヤムクン', genre: 'エスニック', ingredients: ['エビ', 'きのこ', 'トマト', 'ライム', 'レモングラス', '唐辛子'], cookingTime: 25, difficulty: '普通', description: '酸っぱ辛いタイスープ' },
 ]
 
-function enrichRecipe(recipe: Recipe): Recipe {
+export function enrichRecipe(recipe: Recipe): Recipe {
   return enrichDishRole(enrichRecipeHealth(recipe))
 }
 
-function mergeRecipes(...sources: Recipe[][]): Recipe[] {
+export function mergeRecipes(...sources: Recipe[][]): Recipe[] {
   const seen = new Set<string>()
   const merged: Recipe[] = []
   for (const source of sources) {
@@ -137,22 +138,35 @@ function mergeRecipes(...sources: Recipe[][]): Recipe[] {
   return merged
 }
 
-export const RECIPES: Recipe[] = mergeRecipes(
+export const CURATED_RECIPES: Recipe[] = mergeRecipes(
   BASE_RECIPES,
   RECIPES_EXTRA,
   RECIPES_TRENDING,
-  RECIPES_HEALTH,
-  RECIPES_BULK
+  RECIPES_HEALTH
 )
+
+export const RECIPES: Recipe[] = mergeRecipes(CURATED_RECIPES, RECIPES_BULK)
 
 const RECIPE_SEARCH_INDEX: RecipeSearchIndexEntry[] = buildRecipeSearchIndex(RECIPES)
 
+function activeRecipes(): Recipe[] {
+  return getLiveRecipes() ?? RECIPES
+}
+
+function activeIndex(): RecipeSearchIndexEntry[] {
+  return getLiveIndex() ?? RECIPE_SEARCH_INDEX
+}
+
+export function getRecipes(): Recipe[] {
+  return activeRecipes()
+}
+
 export function getRecipeSearchIndex(): RecipeSearchIndexEntry[] {
-  return RECIPE_SEARCH_INDEX
+  return activeIndex()
 }
 
 export function getRecipeById(id: string): Recipe | undefined {
-  return RECIPES.find((r) => r.id === id)
+  return activeRecipes().find((r) => r.id === id)
 }
 
 export function searchRecipes(options: {
@@ -165,12 +179,13 @@ export function searchRecipes(options: {
   healthTags?: HealthTag[]
   favoriteIds?: string[]
 }): Recipe[] {
+  const recipes = activeRecipes()
   let list = options.query || options.ingredient
-    ? filterIndexedRecipes(RECIPE_SEARCH_INDEX, {
+    ? filterIndexedRecipes(activeIndex(), {
         query: options.query,
         ingredient: options.ingredient,
       })
-    : RECIPES
+    : recipes
 
   return list.filter((r) => {
     if (options.genre && options.genre !== 'すべて' && r.genre !== options.genre) return false
@@ -188,14 +203,15 @@ export function searchRecipes(options: {
 }
 
 export function getTrendingRecipes(): Recipe[] {
-  return RECIPES.filter((r) => r.trending)
+  return activeRecipes().filter((r) => r.trending)
 }
 
 export function getHealthRecipes(tags?: HealthTag[]): Recipe[] {
+  const recipes = activeRecipes()
   if (tags && tags.length > 0) {
-    return RECIPES.filter((r) => matchesHealthFilter(r, tags))
+    return recipes.filter((r) => matchesHealthFilter(r, tags))
   }
-  return RECIPES.filter(isHealthRecipe)
+  return recipes.filter(isHealthRecipe)
 }
 
 export function countByHealthTag(): Record<HealthTag, number> {
@@ -203,7 +219,7 @@ export function countByHealthTag(): Record<HealthTag, number> {
     HealthTag,
     number
   >
-  for (const recipe of RECIPES) {
+  for (const recipe of activeRecipes()) {
     for (const tag of recipe.healthTags ?? []) {
       if (tag in counts) counts[tag] += 1
     }
@@ -212,9 +228,10 @@ export function countByHealthTag(): Record<HealthTag, number> {
 }
 
 export function getRecipesByDishRole(role: DishRole): Recipe[] {
-  return RECIPES.filter((r) => r.dishRole === role)
+  return activeRecipes().filter((r) => r.dishRole === role)
 }
 
 export function getRecipeCount(): number {
-  return RECIPES.length
+  return activeRecipes().length
 }
+
