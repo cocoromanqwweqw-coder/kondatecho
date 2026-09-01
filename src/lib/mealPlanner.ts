@@ -158,6 +158,22 @@ function getCustomRecipesForRole(state: AppState, role: DishRole): Recipe[] {
   return (state.customRecipes ?? []).filter((r) => (r.dishRole ?? '主菜') === role)
 }
 
+function isCustomRecipe(recipe: Recipe): boolean {
+  return Boolean(recipe.custom) || recipe.id.startsWith('custom-')
+}
+
+/** 手入力を先頭に。同じ手入力の中では新しいものほど上 */
+function sortCustomFirst(recipes: Recipe[]): Recipe[] {
+  const custom: Recipe[] = []
+  const rest: Recipe[] = []
+  for (const recipe of recipes) {
+    if (isCustomRecipe(recipe)) custom.push(recipe)
+    else rest.push(recipe)
+  }
+  custom.reverse()
+  return [...custom, ...rest]
+}
+
 /** 候補をシャッフルして指定役割のレシピを返す（手動選び用） */
 export function getCandidateRecipes(
   role: DishRole,
@@ -192,8 +208,15 @@ export function getCandidateRecipes(
     .map((recipe) => ({ recipe, score: scoreRecipe(recipe, ctx) }))
     .sort((a, b) => b.score - a.score)
 
+  const customFirst = sortCustomFirst(list)
   const result: Recipe[] = []
   const seen = new Set<string>()
+  for (const recipe of customFirst) {
+    if (!isCustomRecipe(recipe)) continue
+    if (seen.has(recipe.id)) continue
+    seen.add(recipe.id)
+    result.push(recipe)
+  }
   for (const { recipe } of scored) {
     if (result.length >= limit) break
     if (seen.has(recipe.id)) continue
@@ -213,10 +236,9 @@ export function getCandidateRecipes(
     }
   }
 
-  return result
+  return sortCustomFirst(result)
 }
 
-/** 複数役割の候補をマージして返す（手動選び用。limit 未指定なら該当レシピを全部） */
 export function getCandidateRecipesMulti(
   roles: DishRole[],
   state: AppState,
@@ -236,11 +258,12 @@ export function getCandidateRecipesMulti(
       if (seen.has(recipe.id)) continue
       seen.add(recipe.id)
       result.push(recipe)
-      if (result.length >= limit) return result
     }
   }
 
-  return result
+  const ordered = sortCustomFirst(result)
+  if (Number.isFinite(limit)) return ordered.slice(0, limit)
+  return ordered
 }
 
 /** 料理名・材料で全レシピから候補を返す（役割フィルターは無視） */
@@ -289,11 +312,12 @@ export function searchCandidateRecipes(
     dayIndex,
   }
 
-  return [...list]
-    .map((recipe) => ({ recipe, score: scoreRecipe(recipe, ctx) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map(({ recipe }) => recipe)
+  return sortCustomFirst(
+    [...list]
+      .map((recipe) => ({ recipe, score: scoreRecipe(recipe, ctx) }))
+      .sort((a, b) => b.score - a.score)
+      .map(({ recipe }) => recipe)
+  ).slice(0, limit)
 }
 
 export function getMissingIngredients(

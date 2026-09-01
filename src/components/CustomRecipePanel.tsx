@@ -81,7 +81,7 @@ export function CustomRecipePanel({
   }, [open, initialRecipeId])
 
   const filtered = useMemo(
-    () => customRecipes.filter((r) => recipeMatchesQuery(r, query)),
+    () => [...customRecipes.filter((r) => recipeMatchesQuery(r, query))].reverse(),
     [customRecipes, query]
   )
 
