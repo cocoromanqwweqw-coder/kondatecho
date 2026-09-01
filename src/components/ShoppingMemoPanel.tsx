@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DishRole, Recipe } from '../types'
-import { DAYS, DISH_ROLE_EMOJI } from '../types'
+import { DAYS } from '../types'
 import type { useAppState } from '../hooks/useAppState'
 import {
   buildPlanShoppingItems,
@@ -144,14 +144,14 @@ export function ShoppingMemoPanel({ app, onGoPlan, onOpenCustomPanel }: Props) {
                       title={slot.recipe.name}
                       className="max-w-full shrink-0 truncate whitespace-nowrap rounded-md bg-orange-50 px-1.5 py-0.5 text-sm font-medium text-gray-800 hover:bg-orange-100"
                     >
-                      {DISH_ROLE_EMOJI[slot.role]} {slot.recipe.name}
+                      {slot.recipe.name}
                     </button>
                   ) : (
                     <span
                       key={slot.role}
                       className="shrink-0 rounded-md bg-gray-50 px-1.5 py-0.5 text-sm text-gray-400"
                     >
-                      {DISH_ROLE_EMOJI[slot.role]}
+                      {slot.role}
                     </span>
                   )
                 )}
