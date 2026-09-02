@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, Recipe } from '../types'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type { AppState, DishRole, ExtraShoppingItem, Genre, InventoryItem, MealType, PlannedMeal, Recipe } from '../types'
 import { DISH_ROLES, GENRES } from '../types'
 import { loadState, saveState, forceSaveState, requestPersistentStorage, readIdbState, isBareUserData } from '../lib/storage'
 import { createId } from '../lib/id'
@@ -11,9 +11,32 @@ import {
   subscribeRecipeCatalog,
 } from '../lib/recipeCatalogState'
 
+function cloneWeeklyPlan(plan: PlannedMeal[]): PlannedMeal[] {
+  return plan.map((p) => ({ ...p }))
+}
+
 export function useAppState() {
   const [state, setState] = useState<AppState>(() => loadState())
   const [hydrated, setHydrated] = useState(false)
+  const planUndoStackRef = useRef<PlannedMeal[][]>([])
+  const skipPlanUndoRef = useRef(false)
+  const [planUndoCount, setPlanUndoCount] = useState(0)
+
+  const recordWeeklyPlanUndo = useCallback((plan: PlannedMeal[]) => {
+    if (skipPlanUndoRef.current) return
+    planUndoStackRef.current.push(cloneWeeklyPlan(plan))
+    setPlanUndoCount(planUndoStackRef.current.length)
+  }, [])
+
+  const undoWeeklyPlan = useCallback(() => {
+    const snapshot = planUndoStackRef.current.pop()
+    if (!snapshot) return false
+    setPlanUndoCount(planUndoStackRef.current.length)
+    skipPlanUndoRef.current = true
+    setState((prev) => ({ ...prev, weeklyPlan: cloneWeeklyPlan(snapshot) }))
+    skipPlanUndoRef.current = false
+    return true
+  }, [])
   const catalogRevision = useSyncExternalStore(
     subscribeRecipeCatalog,
     getRecipeCatalogRevision,
@@ -51,6 +74,8 @@ export function useAppState() {
   }, [])
 
   const replaceState = useCallback((next: AppState) => {
+    planUndoStackRef.current = []
+    setPlanUndoCount(0)
     forceSaveState(next)
     setState(next)
   }, [])
@@ -207,15 +232,24 @@ export function useAppState() {
   }, [])
 
   const autoGenerate = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      weeklyPlan: generateWeeklyPlan(prev),
-    }))
-  }, [])
+    setState((prev) => {
+      recordWeeklyPlanUndo(prev.weeklyPlan)
+      return {
+        ...prev,
+        weeklyPlan: generateWeeklyPlan(prev),
+      }
+    })
+  }, [recordWeeklyPlanUndo])
 
   const setSlot = useCallback(
     (dayIndex: number, mealType: MealType, dishRole: DishRole, recipeId: string) => {
       setState((prev) => {
+        const existing = prev.weeklyPlan.find(
+          (p) =>
+            p.dayIndex === dayIndex && p.mealType === mealType && p.dishRole === dishRole
+        )
+        if (existing?.recipeId === recipeId) return prev
+        recordWeeklyPlanUndo(prev.weeklyPlan)
         const filtered = prev.weeklyPlan.filter(
           (p) =>
             !(p.dayIndex === dayIndex && p.mealType === mealType && p.dishRole === dishRole)
@@ -226,20 +260,28 @@ export function useAppState() {
         }
       })
     },
-    []
+    [recordWeeklyPlanUndo]
   )
 
   const clearSlot = useCallback(
     (dayIndex: number, mealType: MealType, dishRole: DishRole) => {
-      setState((prev) => ({
-        ...prev,
-        weeklyPlan: prev.weeklyPlan.filter(
+      setState((prev) => {
+        const exists = prev.weeklyPlan.some(
           (p) =>
-            !(p.dayIndex === dayIndex && p.mealType === mealType && p.dishRole === dishRole)
-        ),
-      }))
+            p.dayIndex === dayIndex && p.mealType === mealType && p.dishRole === dishRole
+        )
+        if (!exists) return prev
+        recordWeeklyPlanUndo(prev.weeklyPlan)
+        return {
+          ...prev,
+          weeklyPlan: prev.weeklyPlan.filter(
+            (p) =>
+              !(p.dayIndex === dayIndex && p.mealType === mealType && p.dishRole === dishRole)
+          ),
+        }
+      })
     },
-    []
+    [recordWeeklyPlanUndo]
   )
 
   const moveSlot = useCallback(
@@ -268,6 +310,8 @@ export function useAppState() {
           if (fromIdx < 0) return prev
           const fromRecipeId = plan[fromIdx].recipeId
 
+          recordWeeklyPlanUndo(prev.weeklyPlan)
+
           if (from.dishRole === to.dishRole) {
             plan = plan.filter((_, i) => i !== fromIdx && i !== toIdx)
             plan.push({ ...to, recipeId: fromRecipeId, manual: true })
@@ -279,6 +323,7 @@ export function useAppState() {
             plan.push({ ...to, recipeId: fromRecipeId, manual: true })
           }
         } else if (recipeId) {
+          recordWeeklyPlanUndo(prev.weeklyPlan)
           plan = plan.filter(
             (p) =>
               !(
@@ -293,7 +338,7 @@ export function useAppState() {
         return { ...prev, weeklyPlan: plan }
       })
     },
-    []
+    [recordWeeklyPlanUndo]
   )
 
   const moveSlotToStaging = useCallback(
@@ -305,6 +350,7 @@ export function useAppState() {
         )
         if (!slot) return prev
         const recipe = resolveRecipe(slot.recipeId, prev.customRecipes)
+        recordWeeklyPlanUndo(prev.weeklyPlan)
         return {
           ...prev,
           weeklyPlan: prev.weeklyPlan.filter(
@@ -326,7 +372,7 @@ export function useAppState() {
         }
       })
     },
-    []
+    [recordWeeklyPlanUndo]
   )
 
   const addToStaging = useCallback((recipeId: string, dishRole: DishRole) => {
@@ -358,6 +404,8 @@ export function useAppState() {
       setState((prev) => {
         const staged = prev.stagedRecipes.find((s) => s.id === stagedId)
         if (!staged) return prev
+
+        recordWeeklyPlanUndo(prev.weeklyPlan)
 
         const existing = prev.weeklyPlan.find(
           (p) =>
@@ -398,7 +446,7 @@ export function useAppState() {
         return { ...prev, weeklyPlan: plan, stagedRecipes }
       })
     },
-    []
+    [recordWeeklyPlanUndo]
   )
 
   const addCustomRecipe = useCallback(
@@ -468,25 +516,46 @@ export function useAppState() {
   )
 
   const removeCustomRecipe = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      customRecipes: prev.customRecipes.filter((r) => r.id !== id),
-      weeklyPlan: prev.weeklyPlan.filter((p) => p.recipeId !== id),
-      stagedRecipes: prev.stagedRecipes.filter((s) => s.recipeId !== id),
-      favoriteRecipeIds: prev.favoriteRecipeIds.filter((fid) => fid !== id),
-    }))
-  }, [])
+    setState((prev) => {
+      const removesFromPlan = prev.weeklyPlan.some((p) => p.recipeId === id)
+      if (!removesFromPlan) {
+        return {
+          ...prev,
+          customRecipes: prev.customRecipes.filter((r) => r.id !== id),
+          stagedRecipes: prev.stagedRecipes.filter((s) => s.recipeId !== id),
+          favoriteRecipeIds: prev.favoriteRecipeIds.filter((fid) => fid !== id),
+        }
+      }
+      recordWeeklyPlanUndo(prev.weeklyPlan)
+      return {
+        ...prev,
+        customRecipes: prev.customRecipes.filter((r) => r.id !== id),
+        weeklyPlan: prev.weeklyPlan.filter((p) => p.recipeId !== id),
+        stagedRecipes: prev.stagedRecipes.filter((s) => s.recipeId !== id),
+        favoriteRecipeIds: prev.favoriteRecipeIds.filter((fid) => fid !== id),
+      }
+    })
+  }, [recordWeeklyPlanUndo])
 
   const clearPlan = useCallback(() => {
-    setState((prev) => ({ ...prev, weeklyPlan: [] }))
-  }, [])
+    setState((prev) => {
+      if (prev.weeklyPlan.length === 0) return prev
+      recordWeeklyPlanUndo(prev.weeklyPlan)
+      return { ...prev, weeklyPlan: [] }
+    })
+  }, [recordWeeklyPlanUndo])
 
   const clearDay = useCallback((dayIndex: number) => {
-    setState((prev) => ({
-      ...prev,
-      weeklyPlan: prev.weeklyPlan.filter((p) => p.dayIndex !== dayIndex),
-    }))
-  }, [])
+    setState((prev) => {
+      const hasDay = prev.weeklyPlan.some((p) => p.dayIndex === dayIndex)
+      if (!hasDay) return prev
+      recordWeeklyPlanUndo(prev.weeklyPlan)
+      return {
+        ...prev,
+        weeklyPlan: prev.weeklyPlan.filter((p) => p.dayIndex !== dayIndex),
+      }
+    })
+  }, [recordWeeklyPlanUndo])
 
   const fillDayEmpty = useCallback((dayIndex: number) => {
     setState((prev) => {
@@ -513,9 +582,11 @@ export function useAppState() {
         usedDuplicateKeys.add(getRecipeDuplicateKey(pick.name))
         plan.push({ dayIndex, mealType: '夜', dishRole, recipeId: pick.id })
       }
+      if (plan.length === prev.weeklyPlan.length) return prev
+      recordWeeklyPlanUndo(prev.weeklyPlan)
       return { ...prev, weeklyPlan: plan }
     })
-  }, [])
+  }, [recordWeeklyPlanUndo])
 
   const favoriteDayRecipes = useCallback((dayIndex: number) => {
     setState((prev) => {
@@ -576,5 +647,7 @@ export function useAppState() {
     setShoppingFreeMemo,
     setDayRiceIncluded,
     replaceState,
+    undoWeeklyPlan,
+    planUndoCount,
   }
 }

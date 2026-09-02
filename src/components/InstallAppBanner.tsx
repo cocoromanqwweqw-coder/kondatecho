@@ -27,7 +27,7 @@ export function InstallAppBanner() {
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-orange-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto flex max-w-6xl items-start gap-3">
         <img
-          src="/pwa-icon.svg?v=11"
+          src="/pwa-icon.svg?v=21"
           alt=""
           width={40}
           height={40}
