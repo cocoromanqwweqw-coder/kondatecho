@@ -255,7 +255,6 @@ function WeekRecipeSlot({
         }}
         onPointerCancel={moveMode ? undefined : longPress.onPointerCancel}
         onContextMenu={moveMode ? undefined : longPress.onContextMenu}
-        onSelectStart={moveMode ? undefined : longPress.onSelectStart}
         style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
         onClick={(e) => {
           e.stopPropagation()
