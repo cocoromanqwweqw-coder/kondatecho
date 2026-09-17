@@ -4,6 +4,7 @@ import { DAYS, DISH_ROLE_EMOJI, DISH_ROLES, GENRES } from '../types'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { hapticTap } from '../lib/haptic'
 import { getCandidateRecipesMulti, searchCandidateRecipes } from '../lib/mealPlanner'
+import { isShidokuAcceptable, shidokuHits, shidokuNote } from '../lib/shidoku'
 import { RecipePhoto } from './RecipePhoto'
 
 const CANDIDATE_ROW_CLASS = 'h-[3.25rem] shrink-0 snap-start'
@@ -18,6 +19,7 @@ export interface RecipeCandidatePanelProps {
   onToggleFavorite: (recipeId: string) => void
   onOpenDetail: (recipe: Recipe) => void
   onOpenCustom?: () => void
+  onToggleShidoku?: () => void
   listHeightClass?: string
   className?: string
   variant?: 'page' | 'sheet'
@@ -27,6 +29,7 @@ function CandidateCard({
   recipe,
   isFavorite,
   compact = false,
+  showShidoku = false,
   onQuickAdd,
   onToggleFavorite,
   onOpenDetail,
@@ -34,6 +37,7 @@ function CandidateCard({
   recipe: Recipe
   isFavorite: boolean
   compact?: boolean
+  showShidoku?: boolean
   onQuickAdd: () => void
   onToggleFavorite: () => void
   onOpenDetail: () => void
@@ -65,6 +69,7 @@ function CandidateCard({
         </p>
         <p className={`text-gray-500 ${compact ? 'text-[10px]' : 'text-xs'}`}>
           {recipe.custom ? '手入力' : `${recipe.genre} · ⏱ ${recipe.cookingTime}分`}
+          {showShidoku && shidokuNote(recipe) ? ` · ${shidokuNote(recipe)}` : ''}
         </p>
       </div>
       <button
@@ -102,6 +107,8 @@ function CandidateSlider({
   favoriteIds,
   listHeightClass,
   className = '',
+  showShidoku = false,
+  emptyText,
   onQuickAdd,
   onToggleFavorite,
   onOpenDetail,
@@ -111,6 +118,8 @@ function CandidateSlider({
   favoriteIds: string[]
   listHeightClass: string
   className?: string
+  showShidoku?: boolean
+  emptyText?: string
   onQuickAdd: (recipeId: string) => void
   onToggleFavorite: (recipeId: string) => void
   onOpenDetail: (recipe: Recipe) => void
@@ -183,7 +192,8 @@ function CandidateSlider({
       >
         {candidates.length === 0 ? (
           <p className="py-4 text-center text-sm text-gray-400">
-            {favoritesOnly ? 'お気に入りに該当する候補がありません' : '候補がありません'}
+            {emptyText ??
+              (favoritesOnly ? 'お気に入りに該当する候補がありません' : '候補がありません')}
           </p>
         ) : (
           <div
@@ -203,6 +213,7 @@ function CandidateSlider({
                     recipe={recipe}
                     isFavorite={favoriteIds.includes(recipe.id)}
                     compact
+                    showShidoku={showShidoku}
                     onQuickAdd={() => onQuickAdd(recipe.id)}
                     onToggleFavorite={() => onToggleFavorite(recipe.id)}
                     onOpenDetail={() => onOpenDetail(recipe)}
@@ -225,6 +236,7 @@ export function RecipeCandidatePanel({
   onToggleFavorite,
   onOpenDetail,
   onOpenCustom,
+  onToggleShidoku,
   listHeightClass = CANDIDATE_SLIDER_VIEW_CLASS,
   className = '',
   variant = 'page',
@@ -267,6 +279,10 @@ export function RecipeCandidatePanel({
     }
     if (candidateGenre !== 'すべて') {
       list = list.filter((r) => r.genre === candidateGenre)
+    }
+    if (state.shidokuLean) {
+      const lean = list.filter((r) => isShidokuAcceptable(r))
+      list = lean.sort((a, b) => shidokuHits(a).length - shidokuHits(b).length)
     }
     return list
   }, [
@@ -359,7 +375,24 @@ export function RecipeCandidatePanel({
             {g}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => onToggleShidoku?.()}
+          title="小麦と植物油は出さない。乳製品か砂糖が1つだけなら残す。みりん・醤油は数えない"
+          className={`px-2.5 py-1 text-xs rounded-full border transition ${
+            state.shidokuLean
+              ? 'bg-emerald-600 text-white border-emerald-600'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400'
+          }`}
+        >
+          四毒抜き
+        </button>
       </div>
+      {state.shidokuLean && (
+        <p className="mb-2 shrink-0 text-[10px] leading-snug text-emerald-800">
+          小麦と植物油は出していません。乳製品か砂糖が1つだけなら残します
+        </p>
+      )}
       <div className="mb-2 flex gap-1.5 shrink-0">
         <input
           type="text"
@@ -381,6 +414,12 @@ export function RecipeCandidatePanel({
         favoritesOnly={favoritesOnly}
         favoriteIds={state.favoriteRecipeIds}
         listHeightClass={listHeightClass}
+        showShidoku={state.shidokuLean}
+        emptyText={
+          state.shidokuLean
+            ? '小麦か植物油が入らない料理がありません。チップをオフにすると全部出ます'
+            : undefined
+        }
         onQuickAdd={onQuickAdd}
         onToggleFavorite={onToggleFavorite}
         onOpenDetail={onOpenDetail}

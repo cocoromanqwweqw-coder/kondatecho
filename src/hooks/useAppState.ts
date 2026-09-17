@@ -210,6 +210,10 @@ export function useAppState() {
     })
   }, [])
 
+  const toggleShidokuLean = useCallback(() => {
+    setState((prev) => ({ ...prev, shidokuLean: !prev.shidokuLean }))
+  }, [])
+
   const togglePreferredGenre = useCallback((genre: Genre) => {
     setState((prev) => {
       const genres = prev.preferredGenres.includes(genre)
@@ -639,6 +643,7 @@ export function useAppState() {
     moveCheckedShoppingToInventory,
     toggleFavorite,
     togglePreferredGenre,
+    toggleShidokuLean,
     toggleDayGenre,
     setAllDayGenres,
     autoGenerate,

@@ -5,6 +5,7 @@ import {
   indexMatchesIngredient,
   indexMatchesText,
 } from './recipeSearchIndex'
+import { isShidokuAcceptable, shidokuHits } from './shidoku'
 import type { AppState, DishRole, Genre, MealType, PlannedMeal, Recipe } from '../types'
 import { DAYS, DISH_ROLES, MEAL_TYPES } from '../types'
 
@@ -15,6 +16,7 @@ interface ScoreContext {
   usedRecipeIds: Set<string>
   usedDuplicateKeys: Set<string>
   preferredGenres: Genre[]
+  shidokuLean: boolean
   dayIndex: number
 }
 
@@ -41,6 +43,13 @@ function scoreRecipe(recipe: Recipe, ctx: ScoreContext): number {
   if (recipe.difficulty === '簡単') score += 12
   if (recipe.cookingTime <= 20) score += 8
   if (ctx.preferredGenres.length > 0 && ctx.preferredGenres.includes(recipe.genre)) score += 15
+  if (ctx.shidokuLean) {
+    const hits = shidokuHits(recipe)
+    if (hits.includes('小麦') || hits.includes('植物油')) score -= 400
+    else if (hits.length === 0) score += 40
+    else if (hits.length === 1) score += 10
+    else score -= 80
+  }
   if (ctx.usedRecipeIds.has(recipe.id) || ctx.usedDuplicateKeys.has(duplicateKeyForRecipe(recipe)))
     score -= 200
 
@@ -125,6 +134,9 @@ export function generateWeeklyPlan(state: AppState): PlannedMeal[] {
         const filtered = candidates.filter((r) => state.preferredGenres.includes(r.genre))
         if (filtered.length >= 21) candidates = filtered
       }
+      if (state.shidokuLean) {
+        candidates = candidates.filter((r) => isShidokuAcceptable(r))
+      }
 
       for (const dishRole of DISH_ROLES) {
         if (lockedKeys.has(mealSlotKey(dayIndex, mealType, dishRole))) continue
@@ -136,6 +148,7 @@ export function generateWeeklyPlan(state: AppState): PlannedMeal[] {
           usedRecipeIds,
           usedDuplicateKeys,
           preferredGenres: state.preferredGenres,
+          shidokuLean: state.shidokuLean,
           dayIndex,
         }
         const pick = pickForRole(dishRole, candidates, ctx)
@@ -187,6 +200,9 @@ export function getCandidateRecipes(
     const filtered = list.filter((r) => !disabled.includes(r.genre))
     if (filtered.length > 0) list = filtered
   }
+  if (state.shidokuLean) {
+    list = list.filter((r) => isShidokuAcceptable(r))
+  }
 
   const inventoryNames = state.inventory.map((i) => i.name)
   const wantToUseInventory = state.inventory.filter((i) => i.wantToUse).map((i) => i.name)
@@ -198,6 +214,7 @@ export function getCandidateRecipes(
     usedRecipeIds: new Set(),
     usedDuplicateKeys: new Set(),
     preferredGenres: state.preferredGenres,
+    shidokuLean: state.shidokuLean,
     dayIndex,
   }
 
@@ -296,6 +313,9 @@ export function searchCandidateRecipes(
     const filtered = list.filter((r) => !disabled.includes(r.genre))
     if (filtered.length > 0) list = filtered
   }
+  if (state.shidokuLean) {
+    list = list.filter((r) => isShidokuAcceptable(r))
+  }
 
   const inventoryNames = state.inventory.map((i) => i.name)
   const wantToUseInventory = state.inventory.filter((i) => i.wantToUse).map((i) => i.name)
@@ -306,6 +326,7 @@ export function searchCandidateRecipes(
     usedRecipeIds: new Set(),
     usedDuplicateKeys: new Set(),
     preferredGenres: state.preferredGenres,
+    shidokuLean: state.shidokuLean,
     dayIndex,
   }
 

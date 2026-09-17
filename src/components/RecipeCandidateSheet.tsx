@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void
   onToggleFavorite: (recipeId: string) => void
   onOpenCustom?: () => void
+  onToggleShidoku?: () => void
 }
 
 export function RecipeCandidateSheet({
@@ -25,6 +26,7 @@ export function RecipeCandidateSheet({
   onClose,
   onToggleFavorite,
   onOpenCustom,
+  onToggleShidoku,
 }: Props) {
   const [candidateDetail, setCandidateDetail] = useState<Recipe | null>(null)
 
@@ -93,6 +95,7 @@ export function RecipeCandidateSheet({
               onToggleFavorite={onToggleFavorite}
               onOpenDetail={setCandidateDetail}
               onOpenCustom={onOpenCustom}
+              onToggleShidoku={onToggleShidoku}
             />
           </div>
         </div>

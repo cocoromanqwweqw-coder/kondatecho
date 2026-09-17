@@ -122,6 +122,8 @@ export interface AppState {
   /** 一時置き（曜日未定） */
   stagedRecipes: StagedRecipe[]
   preferredGenres: Genre[]
+  /** 四毒抜き。小麦と植物油は除外し、乳製品か甘いものは1つまで残す */
+  shidokuLean: boolean
   /** 曜日ごとにオフにしたジャンル（dayIndex 0=日 … 6=土） */
   dayDisabledGenres: Partial<Record<number, Genre[]>>
   weekStartDate: string

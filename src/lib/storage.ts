@@ -23,6 +23,7 @@ const defaultState: AppState = {
   weeklyPlan: [],
   stagedRecipes: [],
   preferredGenres: [],
+  shidokuLean: false,
   dayDisabledGenres: {},
   weekStartDate: formatLocalDateKey(getSunday(new Date())),
   dayShoppingNotes: {},
@@ -153,6 +154,7 @@ type PlanSlice = {
   dayRiceIncluded: AppState['dayRiceIncluded']
   dayDisabledGenres: AppState['dayDisabledGenres']
   preferredGenres: AppState['preferredGenres']
+  shidokuLean: boolean
   dayPrepNotes: AppState['dayPrepNotes']
 }
 
@@ -173,6 +175,7 @@ function persistSlices(state: AppState, mirrorIdb = true): void {
     dayRiceIncluded: state.dayRiceIncluded ?? {},
     dayDisabledGenres: state.dayDisabledGenres ?? {},
     preferredGenres: state.preferredGenres ?? [],
+    shidokuLean: state.shidokuLean === true,
     dayPrepNotes: state.dayPrepNotes ?? {},
   } satisfies PlanSlice)
   writeJson(SHOPPING_KEY, {
@@ -212,6 +215,7 @@ function applySlices(parsed: AppState): AppState {
     if (Array.isArray(plan.preferredGenres) && plan.preferredGenres.length > 0 && parsed.preferredGenres.length === 0) {
       parsed.preferredGenres = plan.preferredGenres
     }
+    if (plan.shidokuLean === true) parsed.shidokuLean = true
     if (plan.dayRiceIncluded && Object.keys(parsed.dayRiceIncluded).length === 0) {
       parsed.dayRiceIncluded = plan.dayRiceIncluded
     }
@@ -374,6 +378,7 @@ function normalizeState(
     parsed.favoriteRecipeIds = Array.isArray(parsed.favoriteRecipeIds)
       ? parsed.favoriteRecipeIds
       : []
+    parsed.shidokuLean = parsed.shidokuLean === true
     parsed.inventory = sanitizeInventory(parsed.inventory)
     parsed.stagedRecipes = (Array.isArray(parsed.stagedRecipes) ? parsed.stagedRecipes : []).filter(
       (s) => s && typeof s === 'object' && 'id' in s && 'recipeId' in s && 'dishRole' in s

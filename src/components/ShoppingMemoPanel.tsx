@@ -348,6 +348,7 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
     moveSlot,
     setDayRiceIncluded,
     toggleFavorite,
+    toggleShidokuLean,
     toggleShoppingChecked,
     clearShoppingChecks,
     moveCheckedShoppingToInventory,
@@ -759,6 +760,7 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
           onSelect={(recipeId) => setSlot(picker.dayIndex, MEAL, picker.dishRole, recipeId)}
           onClose={() => setPicker(null)}
           onToggleFavorite={toggleFavorite}
+          onToggleShidoku={toggleShidokuLean}
           onOpenCustom={() => {
             setPicker(null)
             openCustomPanel(null)
