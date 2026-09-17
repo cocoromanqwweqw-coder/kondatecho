@@ -5,6 +5,7 @@ import { DAYS, DISH_ROLE_EMOJI } from '../types'
 import { hapticTap } from '../lib/haptic'
 import { RecipeCandidatePanel } from './RecipeCandidatePanel'
 import { RecipeDetailPopup } from './RecipeDetailPopup'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 interface Props {
   dayIndex: number
@@ -27,16 +28,15 @@ export function RecipeCandidateSheet({
 }: Props) {
   const [candidateDetail, setCandidateDetail] = useState<Recipe | null>(null)
 
+  useBodyScrollLock()
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
     }
   }, [onClose])
 
@@ -49,7 +49,7 @@ export function RecipeCandidateSheet({
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[55] flex flex-col justify-end sm:items-center sm:justify-center sm:p-4"
+        className="fixed inset-0 z-[55] flex flex-col items-start justify-start sm:items-center sm:justify-center sm:p-4"
         role="presentation"
       >
         <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
@@ -58,11 +58,7 @@ export function RecipeCandidateSheet({
           aria-modal="true"
           aria-labelledby="recipe-candidate-title"
           onClick={(e) => e.stopPropagation()}
-          className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-2xl"
-          style={{
-            height: 'min(96dvh, calc(100dvh - env(safe-area-inset-top) - 0.5rem))',
-            maxHeight: 'min(96dvh, calc(100dvh - env(safe-area-inset-top) - 0.5rem))',
-          }}
+          className="relative z-10 flex h-[100lvh] max-h-[100lvh] w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl"
         >
           <div className="shrink-0 border-b border-orange-100 bg-white px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
             <div className="flex items-center justify-between gap-2">

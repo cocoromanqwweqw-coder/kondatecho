@@ -7,6 +7,28 @@ type LongPressHandlers = {
   onPointerUp: (e: React.PointerEvent) => void
   onPointerCancel: (e: React.PointerEvent) => void
   onContextMenu: (e: React.MouseEvent) => void
+  onSelectStart: (e: React.SyntheticEvent) => void
+}
+
+function clearTextSelection() {
+  const sel = window.getSelection()
+  if (!sel || sel.isCollapsed) return
+  sel.removeAllRanges()
+}
+
+/** iOS は長押しのあと、画面が切り替わってから選択範囲を付ける */
+function suppressSelectionBriefly() {
+  clearTextSelection()
+  const stop = (event: Event) => {
+    event.preventDefault()
+  }
+  document.addEventListener('selectstart', stop, true)
+  const timers = [0, 80, 200, 450].map((ms) => window.setTimeout(clearTextSelection, ms))
+  window.setTimeout(() => {
+    document.removeEventListener('selectstart', stop, true)
+    for (const id of timers) window.clearTimeout(id)
+    clearTextSelection()
+  }, 700)
 }
 
 /** 長押しと通常タップを分ける（スマホ向け） */
@@ -44,6 +66,7 @@ export function useLongPress(
         longPressedRef.current = true
         hapticTap('success')
         longRef.current()
+        suppressSelectionBriefly()
       }, delayMs)
     },
     [clearTimer, delayMs]
@@ -59,21 +82,42 @@ export function useLongPress(
     [clearTimer, moveThreshold]
   )
 
-  const finish = useCallback(() => {
-    const wasLong = longPressedRef.current
-    clearTimer()
-    if (!wasLong) pressRef.current?.()
-  }, [clearTimer])
+  const finish = useCallback(
+    (e?: React.PointerEvent) => {
+      const wasLong = longPressedRef.current
+      clearTimer()
+      if (wasLong) {
+        e?.preventDefault()
+        suppressSelectionBriefly()
+        return
+      }
+      pressRef.current?.()
+    },
+    [clearTimer]
+  )
 
-  const onPointerUp = useCallback(() => finish(), [finish])
+  const onPointerUp = useCallback((e: React.PointerEvent) => finish(e), [finish])
   const onPointerCancel = useCallback(() => {
     longPressedRef.current = false
     clearTimer()
+    clearTextSelection()
   }, [clearTimer])
 
   const onContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
+    clearTextSelection()
   }, [])
 
-  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onContextMenu }
+  const onSelectStart = useCallback((e: React.SyntheticEvent) => {
+    e.preventDefault()
+  }, [])
+
+  return {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onContextMenu,
+    onSelectStart,
+  }
 }

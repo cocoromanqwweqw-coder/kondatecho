@@ -25,7 +25,7 @@ export default function App() {
 
   const shellClass =
     mode === 'mobile'
-      ? 'mx-auto min-h-screen max-w-[430px] overflow-hidden border-x border-orange-200/80 bg-canvas'
+      ? 'mx-auto min-h-screen max-w-[430px] border-x border-orange-200/80 bg-canvas'
       : mode === 'desktop'
         ? 'min-w-[1024px]'
         : 'min-h-screen'
@@ -54,9 +54,6 @@ export default function App() {
                   />
                   <div className="min-w-0">
                     <h1 className="text-2xl font-bold tracking-tight text-black">こんだて帳</h1>
-                    <p className="mt-1 text-sm text-neutral-500">
-                      今週の献立を組んで、買い物メモまでまとめて管理
-                    </p>
                   </div>
                 </div>
                 <DisplayModeToggle />

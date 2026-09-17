@@ -6,6 +6,7 @@ import { RecipePhoto } from './RecipePhoto'
 import { RecipeLinks } from './RecipeLinks'
 import { HealthTagBadges } from './HealthTagBadges'
 import { hapticTap } from '../lib/haptic'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 interface Props {
   recipe: Recipe
@@ -30,22 +31,21 @@ export function RecipeDetailPopup({
   onPlace,
   onEdit,
 }: Props) {
+  useBodyScrollLock()
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
     }
   }, [onClose])
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4"
+      className="fixed inset-0 z-[60] flex items-start justify-center sm:items-center sm:p-4"
       role="presentation"
       onClick={onClose}
     >
@@ -55,9 +55,9 @@ export function RecipeDetailPopup({
         aria-modal="true"
         aria-labelledby="recipe-detail-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl"
+        className="relative z-10 h-[100lvh] max-h-[100lvh] w-full max-w-md overflow-y-auto bg-white pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-orange-100 bg-white/95 px-4 py-2.5 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-orange-100 bg-white px-4 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <p className="text-xs font-medium text-orange-600">
             {DAYS[dayIndex]}曜 · {DISH_ROLE_EMOJI[dishRole]} {dishRole}
           </p>

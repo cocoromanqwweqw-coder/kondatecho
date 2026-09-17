@@ -328,6 +328,43 @@ export function matchesJapaneseSearch(haystack: string, needle: string): boolean
   })
 }
 
+/**
+ * 買い物メモ・在庫用の同一判定。
+ * 表記ゆれだけをまとめ、豚ヒレと豚ロースのような部位は別にする。
+ * （検索の「豚で豚ヒレもヒット」とは分ける）
+ */
+const EXACT_INGREDIENT_SYNONYMS: readonly string[][] = [
+  ['豚肉', 'ポーク', 'pork'],
+  ['豚ひき肉', '豚挽き肉'],
+  ['豚バラ肉', '豚ばら肉'],
+  ['鶏もも肉', '鶏腿肉'],
+  ['鶏むね肉', '鶏胸肉'],
+  ['合い挽き肉', '合いびき肉', '合挽き肉'],
+  ['卵', 'たまご'],
+  ['玉ねぎ', 'たまねぎ'],
+  ['じゃがいも', 'ジャガイモ'],
+  ['にんじん', '人参'],
+  ['ねぎ', 'ネギ', '長ねぎ', '長ネギ'],
+]
+
+function exactIngredientKey(name: string): string {
+  const normalized = normalizeProlongedSound(normalizeJapaneseText(name))
+  if (!normalized) return ''
+  for (const group of EXACT_INGREDIENT_SYNONYMS) {
+    if (group.some((term) => normalizeProlongedSound(normalizeJapaneseText(term)) === normalized)) {
+      return normalizeProlongedSound(normalizeJapaneseText(group[0]))
+    }
+  }
+  return normalized
+}
+
+export function sameIngredientName(a: string, b: string): boolean {
+  const left = exactIngredientKey(a)
+  const right = exactIngredientKey(b)
+  if (!left || !right) return false
+  return left === right
+}
+
 /** 複数フィールドを横断検索 */
 export function matchesJapaneseSearchAny(
   needle: string,

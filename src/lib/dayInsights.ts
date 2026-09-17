@@ -398,3 +398,118 @@ export function buildDayInsight(state: AppState, dayIndex: number): DayInsight {
     links,
   }
 }
+
+export type DayGapMark = {
+  emoji: string
+  label: string
+}
+
+const NUTRIENT_EMOJI: Record<NutrientKey, string> = {
+  'たんぱく質': '🥚',
+  '野菜・食物繊維': '🥬',
+  'カルシウム': '🥛',
+  '鉄分': '🫘',
+  'ビタミンC': '🍋',
+  '炭水化物': '🍚',
+}
+
+const VEG_GAPS: { emoji: string; label: string; keywords: string[] }[] = [
+  { emoji: '🥬', label: '葉もの', keywords: ['キャベツ', '白菜', 'レタス', 'ほうれん草', '小松菜'] },
+  { emoji: '🥕', label: 'にんじん', keywords: ['にんじん'] },
+  { emoji: '🥦', label: 'ブロッコリー', keywords: ['ブロッコリー', 'ピーマン'] },
+  { emoji: '🍅', label: 'トマト', keywords: ['トマト'] },
+]
+
+function listDayGapMarks(state: AppState, dayIndex: number): DayGapMark[] {
+  const filled = DISH_ROLES.flatMap((role) => {
+    const slot = getSlot(state.weeklyPlan, dayIndex, MEAL, role)
+    const raw = slot ? resolveRecipe(slot.recipeId, state.customRecipes) : undefined
+    return raw ? [enrichRecipeHealth(raw)] : []
+  })
+  if (filled.length === 0) return []
+
+  const nutrition = estimateDayNutrition(state, dayIndex)
+  const missing: NutrientKey[] = []
+  if (nutrition.proteinG < 20) missing.push('たんぱく質')
+  if (nutrition.fiberHint < 2) missing.push('野菜・食物繊維')
+  if (nutrition.calciumHint < 1) missing.push('カルシウム')
+  if (nutrition.ironHint < 1) missing.push('鉄分')
+  if (nutrition.vitaminCHint < 1) missing.push('ビタミンC')
+  const riceIncluded = resolveDayRiceIncluded(state, dayIndex, filled)
+  const hasStaple = filled.some((recipe) => recipe.dishRole === '主食')
+  if (!hasStaple && !riceIncluded && nutrition.carbsG < 35) missing.push('炭水化物')
+
+  const ingredients = filled.flatMap((recipe) => recipe.ingredients)
+  const marks: DayGapMark[] = []
+  if (missing.includes('野菜・食物繊維')) {
+    const veg = VEG_GAPS.find(
+      (gap) => !ingredients.some((ing) => gap.keywords.some((k) => ing.includes(k)))
+    )
+    marks.push(veg ?? { emoji: '🥬', label: '野菜' })
+  }
+  for (const key of missing) {
+    if (key === '野菜・食物繊維') continue
+    marks.push({ emoji: NUTRIENT_EMOJI[key], label: key })
+  }
+  return marks
+}
+
+/** 予備枠用。その日の献立で足りていない野菜・栄養を最大2つ */
+export function getDayGapMarks(state: AppState, dayIndex: number): DayGapMark[] {
+  return listDayGapMarks(state, dayIndex).slice(0, 2)
+}
+
+export type WeekGapStat = {
+  emoji: string
+  label: string
+  days: number[]
+}
+
+export type WeekNutritionSummary = {
+  plannedDays: number
+  filledSlots: number
+  avgCalories: number | null
+  avgProteinG: number | null
+  gaps: WeekGapStat[]
+  balancedDays: number[]
+}
+
+/** 献立がある日の不足と、週の目安 */
+export function getWeekNutritionSummary(state: AppState): WeekNutritionSummary {
+  const gaps = new Map<string, WeekGapStat>()
+  const balancedDays: number[] = []
+  let plannedDays = 0
+  let filledSlots = 0
+  let calories = 0
+  let proteinG = 0
+
+  for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+    const filled = DISH_ROLES.flatMap((role) => {
+      const slot = getSlot(state.weeklyPlan, dayIndex, MEAL, role)
+      return slot ? [slot] : []
+    })
+    if (filled.length === 0) continue
+    plannedDays += 1
+    filledSlots += filled.length
+    const nutrition = estimateDayNutrition(state, dayIndex)
+    calories += nutrition.calories
+    proteinG += nutrition.proteinG
+
+    const allMarks = listDayGapMarks(state, dayIndex)
+    if (allMarks.length === 0) balancedDays.push(dayIndex)
+    for (const mark of allMarks) {
+      const current = gaps.get(mark.label) ?? { emoji: mark.emoji, label: mark.label, days: [] }
+      current.days.push(dayIndex)
+      gaps.set(mark.label, current)
+    }
+  }
+
+  return {
+    plannedDays,
+    filledSlots,
+    avgCalories: plannedDays > 0 ? Math.round(calories / plannedDays) : null,
+    avgProteinG: plannedDays > 0 ? Math.round(proteinG / plannedDays) : null,
+    gaps: [...gaps.values()].sort((a, b) => b.days.length - a.days.length),
+    balancedDays,
+  }
+}

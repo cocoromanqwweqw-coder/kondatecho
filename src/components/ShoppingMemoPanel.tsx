@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DishRole, MealType, Recipe } from '../types'
 import { DAYS } from '../types'
 import type { useAppState } from '../hooks/useAppState'
@@ -6,6 +6,7 @@ import { useLongPress } from '../hooks/useLongPress'
 import { useDoubleTap } from '../hooks/useDoubleTap'
 import { hapticTap } from '../lib/haptic'
 import { getPlanSummary } from '../lib/mealPlanner'
+import { getDayGapMarks } from '../lib/dayInsights'
 import { formatDate, getWeekDates } from '../lib/storage'
 import {
   buildPlanShoppingItems,
@@ -17,6 +18,7 @@ import { InventoryPanel } from './InventoryPanel'
 import { RecipeDetailPopup } from './RecipeDetailPopup'
 import { RecipeCandidateSheet } from './RecipeCandidateSheet'
 import { DayDetailSheet } from './DayDetailSheet'
+import { WeekNutritionSheet } from './WeekNutritionSheet'
 import { DayRiceToggle } from './DayRiceToggle'
 import { CustomRecipePanel } from './CustomRecipePanel'
 import { useDisplayMode } from '../hooks/useDisplayMode'
@@ -42,7 +44,7 @@ type PickerTarget = {
   dishRole: DishRole
 }
 
-type Clipboard = {
+type MoveSelection = {
   recipeId: string
   recipeName: string
   fromDay: number
@@ -68,31 +70,75 @@ function UndoIcon() {
   )
 }
 
+/** 枠幅に収まるよう文字サイズを自動調整（省略記号なし） */
+function FitLabel({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [fontSize, setFontSize] = useState(14)
+
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const fit = () => {
+      const max = 14
+      const min = 9
+      let size = max
+      el.style.fontSize = `${size}px`
+      while (size > min && el.scrollWidth > el.clientWidth + 0.5) {
+        size -= 0.5
+        el.style.fontSize = `${size}px`
+      }
+      setFontSize(size)
+    }
+
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [text])
+
+  return (
+    <span
+      ref={ref}
+      className="block w-full overflow-hidden whitespace-nowrap text-left leading-none"
+      style={{ fontSize }}
+    >
+      {text}
+    </span>
+  )
+}
+
 function WeekRecipeSlot({
   dayIndex,
   dishRole,
   recipe,
-  clipboard,
-  setClipboard,
+  moveMode,
+  selection,
+  onEnterMoveMode,
+  onSelectForMove,
+  onClearSelection,
+  onMoveTo,
   onOpenDetail,
   onOpenPicker,
-  onPaste,
   onClear,
 }: {
   dayIndex: number
   dishRole: DishRole
   recipe?: Recipe
-  clipboard: Clipboard | null
-  setClipboard: (next: Clipboard | null) => void
+  moveMode: boolean
+  selection: MoveSelection | null
+  onEnterMoveMode: (next: MoveSelection) => void
+  onSelectForMove: (next: MoveSelection) => void
+  onClearSelection: () => void
+  onMoveTo: (dayIndex: number, dishRole: DishRole) => void
   onOpenDetail: () => void
   onOpenPicker: () => void
-  onPaste: (dayIndex: number, dishRole: DishRole, recipeId: string) => void
   onClear: () => void
 }) {
   const skipClickRef = useRef(false)
-  const isClipboardSource =
-    clipboard?.fromDay === dayIndex && clipboard?.fromRole === dishRole
-  const isPasteTarget = clipboard !== null && !isClipboardSource
+  const isSelected =
+    selection?.fromDay === dayIndex && selection?.fromRole === dishRole
+  const isTarget = moveMode && selection !== null && !isSelected
 
   const longPress = useLongPress(() => {
     skipClickRef.current = true
@@ -105,7 +151,7 @@ function WeekRecipeSlot({
 
   const handleDouble = () => {
     if (!recipe) return
-    setClipboard({
+    onEnterMoveMode({
       recipeId: recipe.id,
       recipeName: recipe.name,
       fromDay: dayIndex,
@@ -116,43 +162,51 @@ function WeekRecipeSlot({
 
   const tapHandler = useDoubleTap(handleSingle, handleDouble)
 
-  const onClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (skipClickRef.current) {
-      skipClickRef.current = false
-      return
-    }
+  const handleMoveModeTap = () => {
     hapticTap()
-    if (clipboard) {
-      if (isClipboardSource) {
-        setClipboard(null)
-        return
-      }
-      onPaste(dayIndex, dishRole, clipboard.recipeId)
+    if (isSelected) {
+      onClearSelection()
       return
     }
-    tapHandler()
+    if (selection) {
+      onMoveTo(dayIndex, dishRole)
+      return
+    }
+    if (recipe) {
+      onSelectForMove({
+        recipeId: recipe.id,
+        recipeName: recipe.name,
+        fromDay: dayIndex,
+        fromRole: dishRole,
+      })
+    }
   }
 
   const slotClass = recipe
-    ? isClipboardSource
-      ? 'border border-amber-400 bg-amber-50 font-medium text-gray-800'
-      : isPasteTarget
-        ? 'border border-dashed border-orange-200 bg-white font-normal text-gray-700'
-        : 'bg-orange-50 font-medium text-gray-800 hover:bg-orange-100 active:bg-orange-100'
-    : isPasteTarget
-      ? 'border border-dashed border-orange-200 bg-white font-normal text-gray-400'
-      : 'bg-gray-50 text-gray-300 active:bg-orange-50 active:text-orange-400'
+    ? isSelected
+      ? 'border-sky-600 bg-sky-200 font-medium text-sky-950'
+      : isTarget
+        ? 'border-dashed border-sky-500 bg-sky-50 font-medium text-sky-900'
+        : moveMode
+          ? 'border-sky-200 bg-white font-medium text-sky-950'
+          : 'border-transparent bg-orange-50 font-medium text-gray-800 hover:bg-orange-100 active:bg-orange-100'
+    : isTarget
+      ? 'border-dashed border-sky-500 bg-sky-50 font-normal text-sky-700'
+      : moveMode
+        ? 'border-sky-100 bg-white text-sky-300'
+        : 'border-transparent bg-gray-50 text-gray-300 active:bg-orange-50 active:text-orange-400'
 
   const title = recipe
-    ? `${recipe.name}（タップで詳細・ダブルタップでコピー・長押しで変更・×で削除）`
-    : clipboard
-      ? `${dishRole}にコピー`
+    ? moveMode
+      ? `${recipe.name}（タップで選択／移動先）`
+      : `${recipe.name}（タップで詳細・ダブルタップで移動モード・長押しで変更・×で削除）`
+    : moveMode && selection
+      ? `${dishRole}へ移動`
       : `${dishRole}を長押しで追加`
 
   return (
-    <span className="relative inline-flex max-w-full shrink-0">
-      {recipe && (
+    <span className="relative block w-full min-w-0" data-move-slot>
+      {recipe && !moveMode && (
         <button
           type="button"
           aria-label={`${recipe.name}を外す`}
@@ -168,10 +222,9 @@ function WeekRecipeSlot({
             e.preventDefault()
             e.stopPropagation()
             hapticTap('success')
-            if (isClipboardSource) setClipboard(null)
             onClear()
           }}
-          className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full border border-gray-200 bg-white text-[9px] font-bold text-gray-400 hover:bg-red-500 hover:text-white"
+          className="absolute right-0.5 top-1/2 z-10 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-[9px] font-bold text-gray-400 hover:bg-red-500 hover:text-white"
         >
           ×
         </button>
@@ -179,12 +232,47 @@ function WeekRecipeSlot({
       <button
         type="button"
         data-no-swipe
+        data-move-slot
         title={title}
-        {...longPress}
-        onClick={onClick}
-        className={`max-w-full select-none truncate whitespace-nowrap rounded-md px-1.5 py-0.5 text-sm ${slotClass}`}
+        onPointerDown={(e) => {
+          e.stopPropagation()
+          if (moveMode) {
+            // 後続の ghost click を抑止
+            e.preventDefault()
+            return
+          }
+          longPress.onPointerDown(e)
+        }}
+        onPointerMove={moveMode ? undefined : longPress.onPointerMove}
+        onPointerUp={(e) => {
+          if (moveMode) {
+            e.stopPropagation()
+            if (e.button !== 0 && e.pointerType === 'mouse') return
+            handleMoveModeTap()
+            return
+          }
+          longPress.onPointerUp(e)
+        }}
+        onPointerCancel={moveMode ? undefined : longPress.onPointerCancel}
+        onContextMenu={moveMode ? undefined : longPress.onContextMenu}
+        onSelectStart={moveMode ? undefined : longPress.onSelectStart}
+        style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (moveMode) {
+            e.preventDefault()
+            return
+          }
+          if (skipClickRef.current) {
+            skipClickRef.current = false
+            return
+          }
+          hapticTap()
+          tapHandler()
+        }}
+        className={`box-border flex h-7 w-full min-w-0 items-center select-none rounded-md border px-1.5 ${recipe && !moveMode ? 'pr-5' : ''} ${slotClass}`}
       >
-        {recipe ? recipe.name : isPasteTarget ? `${dishRole}へ` : dishRole}
+        <FitLabel text={recipe ? recipe.name : dishRole} />
       </button>
     </span>
   )
@@ -258,9 +346,11 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
     clearPlan,
     setSlot,
     clearSlot,
+    moveSlot,
     setDayRiceIncluded,
     toggleFavorite,
     toggleShoppingChecked,
+    clearShoppingChecks,
     moveCheckedShoppingToInventory,
     setShoppingFreeMemo,
     undoWeeklyPlan,
@@ -271,8 +361,12 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
   const [detail, setDetail] = useState<Detail | null>(null)
   const [picker, setPicker] = useState<PickerTarget | null>(null)
   const [placeTarget, setPlaceTarget] = useState<PickerTarget | null>(null)
-  const [clipboard, setClipboard] = useState<Clipboard | null>(null)
+  const [moveMode, setMoveMode] = useState(false)
+  const [selection, setSelection] = useState<MoveSelection | null>(null)
+  const selectionRef = useRef<MoveSelection | null>(null)
+  const moveLockUntilRef = useRef(0)
   const [dayDetail, setDayDetail] = useState<number | null>(null)
+  const [weekStatsOpen, setWeekStatsOpen] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
   const [customEditId, setCustomEditId] = useState<string | null>(null)
 
@@ -296,10 +390,17 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
   ).length
   const listCount = planItems.length
 
+  const exitMoveMode = () => {
+    setMoveMode(false)
+    selectionRef.current = null
+    setSelection(null)
+  }
+
   const removeFromPlan = (dayIndex: number, dishRole: DishRole) => {
     clearSlot(dayIndex, MEAL, dishRole)
-    if (clipboard?.fromDay === dayIndex && clipboard?.fromRole === dishRole) {
-      setClipboard(null)
+    if (selectionRef.current?.fromDay === dayIndex && selectionRef.current?.fromRole === dishRole) {
+      selectionRef.current = null
+      setSelection(null)
     }
     setDetail((current) =>
       current && current.dayIndex === dayIndex && current.dishRole === dishRole
@@ -308,43 +409,91 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
     )
   }
 
-  const handlePaste = (dayIndex: number, dishRole: DishRole, recipeId: string) => {
-    setSlot(dayIndex, MEAL, dishRole, recipeId)
-    setClipboard(null)
+  const handleEnterMoveMode = (next: MoveSelection) => {
+    setMoveMode(true)
+    selectionRef.current = next
+    setSelection(next)
+    moveLockUntilRef.current = Date.now() + 400
+  }
+
+  const handleSelectForMove = (next: MoveSelection) => {
+    if (Date.now() < moveLockUntilRef.current) return
+    selectionRef.current = next
+    setSelection(next)
+  }
+
+  const handleClearSelection = () => {
+    selectionRef.current = null
+    setSelection(null)
+  }
+
+  const handleMoveTo = (dayIndex: number, dishRole: DishRole) => {
+    const current = selectionRef.current
+    if (!current) return
+    if (current.fromDay === dayIndex && current.fromRole === dishRole) {
+      handleClearSelection()
+      return
+    }
+    const now = Date.now()
+    if (now < moveLockUntilRef.current) return
+    moveLockUntilRef.current = now + 450
+
+    moveSlot(
+      { dayIndex: current.fromDay, mealType: MEAL, dishRole: current.fromRole },
+      { dayIndex, mealType: MEAL, dishRole }
+    )
+    // 追いかけ選択なし。次は別レシピを選んで繰り返す
+    selectionRef.current = null
+    setSelection(null)
     hapticTap('success')
   }
 
   const handleUndo = () => {
     if (!undoWeeklyPlan()) return
-    setClipboard(null)
+    exitMoveMode()
     hapticTap()
   }
 
-  return (
-    <div className="space-y-3">
-      <div className="relative rounded-2xl border border-orange-200/80 bg-white p-3.5 shadow-sm">
-        <button
-          type="button"
-          onClick={handleUndo}
-          disabled={planUndoCount === 0}
-          aria-label={planUndoCount > 0 ? '直前の操作を戻す' : '戻せる操作はありません'}
-          title={planUndoCount > 0 ? '直前の操作を戻す' : '戻せる操作はありません'}
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none disabled:hover:bg-white"
-        >
-          <UndoIcon />
-        </button>
+  const tryExitMoveMode = (e: React.SyntheticEvent) => {
+    if (!moveMode) return
+    if (Date.now() < moveLockUntilRef.current) return
+    const target = e.target as HTMLElement
+    if (target.closest('[data-move-slot]')) return
+    exitMoveMode()
+  }
 
-        <div className="mb-2 flex flex-wrap items-start justify-between gap-2 pr-9">
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-gray-800">今週のレシピ</h2>
-            <p className="text-xs text-gray-500">
-              {formatDate(weekDates[0])} 〜 {formatDate(weekDates[6])}
-            </p>
-            <p className="text-[10px] text-gray-400">
-              長押しで追加 · ダブルタップでコピー · 曜日タップで詳細
-            </p>
+  return (
+    <div className="space-y-3" onPointerDown={tryExitMoveMode}>
+      <div
+        className={`relative rounded-2xl border p-3.5 shadow-sm ${
+          moveMode ? 'border-sky-400 bg-sky-50' : 'border-orange-200/80 bg-white'
+        }`}
+      >
+        <div className="mb-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className={`text-base font-bold ${moveMode ? 'text-sky-950' : 'text-gray-800'}`}>
+                {moveMode ? '移動モード' : '今週のレシピ'}
+              </h2>
+              <p className="text-xs text-gray-500">
+                {formatDate(weekDates[0])} 〜 {formatDate(weekDates[6])}
+              </p>
+              <p className="text-[10px] text-gray-400">
+                長押しで追加 · ダブルタップで移動モード · 曜日タップで詳細
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={planUndoCount === 0}
+              aria-label={planUndoCount > 0 ? '直前の操作を戻す' : '戻せる操作はありません'}
+              title={planUndoCount > 0 ? '直前の操作を戻す' : '戻せる操作はありません'}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-35 disabled:shadow-none disabled:hover:bg-white"
+            >
+              <UndoIcon />
+            </button>
           </div>
-          <div className="flex shrink-0 gap-1.5">
+          <div className="mt-2 flex items-center gap-1.5">
             <button
               type="button"
               onClick={autoGenerate}
@@ -359,75 +508,156 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
             >
               クリア
             </button>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => {
+                hapticTap()
+                setWeekStatsOpen(true)
+              }}
+              className="ml-auto rounded-lg border border-sky-600 bg-white px-2.5 py-1.5 text-xs font-medium text-sky-800 transition hover:bg-sky-50"
+            >
+              今週の栄養
+            </button>
           </div>
         </div>
         <p className="mb-2 text-[10px] text-gray-500">{getPlanSummary(state.weeklyPlan)}</p>
 
-        {clipboard && (
-          <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50/50 px-2.5 py-1.5">
-            <p className="truncate text-[11px] text-amber-900/80">
-              <span className="font-medium">{clipboard.recipeName}</span> をコピー中。貼り付け先をタップ
+        <div className={`mb-2 min-h-[2.125rem] ${moveMode ? '' : 'hidden'}`}>
+          <div className="rounded-lg border border-sky-300 bg-white px-2.5 py-1.5">
+            <p className="truncate text-[11px] leading-snug text-sky-900">
+              {selection ? (
+                <>
+                  <span className="font-medium">{selection.recipeName}</span>{' '}
+                  を選択中。置きたい枠をタップ
+                </>
+              ) : (
+                <>移動モード中。レシピをタップ → 置きたい枠をタップ（繰り返しOK）</>
+              )}
             </p>
           </div>
-        )}
+        </div>
 
         <div className="space-y-2">
-          {menus.map((day) => (
+          {menus.map((day) => {
+            const gapMarks = getDayGapMarks(state, day.dayIndex)
+            return (
             <div
               key={day.dayIndex}
-              className="flex items-start gap-1.5 rounded-lg border border-orange-200 bg-white px-2 py-2"
+              className={`flex items-start gap-1.5 rounded-lg border px-2 py-2 ${
+                moveMode ? 'border-sky-200 bg-sky-100/70' : 'border-orange-200 bg-white'
+              }`}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  hapticTap()
-                  setDayDetail(day.dayIndex)
-                }}
-                title={`${day.weekday}曜の詳細`}
-                className="w-7 shrink-0 rounded-md bg-orange-100 py-1 text-center text-sm font-bold leading-none text-orange-800 hover:bg-orange-200"
-              >
-                {day.weekday}
-              </button>
-              <DayRiceToggle
-                dayIndex={day.dayIndex}
-                riceIncluded={state.dayRiceIncluded[day.dayIndex] !== false}
-                onToggle={setDayRiceIncluded}
-              />
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+              <div className="flex w-7 shrink-0 flex-col items-center gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticTap()
+                    setDayDetail(day.dayIndex)
+                  }}
+                  title={`${day.weekday}曜の詳細`}
+                  className={`w-7 rounded-md py-1 text-center text-sm font-bold leading-none ${
+                    moveMode
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                  }`}
+                >
+                  {day.weekday}
+                </button>
+                <DayRiceToggle
+                  dayIndex={day.dayIndex}
+                  riceIncluded={state.dayRiceIncluded[day.dayIndex] !== false}
+                  onToggle={setDayRiceIncluded}
+                />
+              </div>
+              <div className="grid min-w-0 flex-1 grid-cols-2 gap-1">
                 {day.slots.map((slot) => (
-                  <WeekRecipeSlot
-                    key={slot.role}
-                    dayIndex={day.dayIndex}
-                    dishRole={slot.role}
-                    recipe={slot.recipe}
-                    clipboard={clipboard}
-                    setClipboard={setClipboard}
-                    onOpenDetail={() =>
-                      slot.recipe &&
-                      setDetail({
-                        recipe: slot.recipe,
-                        dayIndex: day.dayIndex,
-                        dishRole: slot.role,
-                      })
-                    }
-                    onOpenPicker={() => {
-                      const target = { dayIndex: day.dayIndex, dishRole: slot.role }
-                      setPlaceTarget(target)
-                      setPicker(target)
-                    }}
-                    onPaste={handlePaste}
-                    onClear={() => removeFromPlan(day.dayIndex, slot.role)}
-                  />
+                  <div key={slot.role} className="min-w-0">
+                    <WeekRecipeSlot
+                      dayIndex={day.dayIndex}
+                      dishRole={slot.role}
+                      recipe={slot.recipe}
+                      moveMode={moveMode}
+                      selection={selection}
+                      onEnterMoveMode={handleEnterMoveMode}
+                      onSelectForMove={handleSelectForMove}
+                      onClearSelection={handleClearSelection}
+                      onMoveTo={handleMoveTo}
+                      onOpenDetail={() =>
+                        slot.recipe &&
+                        setDetail({
+                          recipe: slot.recipe,
+                          dayIndex: day.dayIndex,
+                          dishRole: slot.role,
+                        })
+                      }
+                      onOpenPicker={() => {
+                        const target = { dayIndex: day.dayIndex, dishRole: slot.role }
+                        setPlaceTarget(target)
+                        setPicker(target)
+                      }}
+                      onClear={() => removeFromPlan(day.dayIndex, slot.role)}
+                    />
+                  </div>
                 ))}
+                <button
+                  type="button"
+                  data-move-slot
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    hapticTap()
+                    setDayDetail(day.dayIndex)
+                  }}
+                  title={
+                    gapMarks.length > 0
+                      ? `足りないもの: ${gapMarks.map((mark) => mark.label).join('・')}`
+                      : 'タップでこの日の詳細'
+                  }
+                  aria-label={
+                    gapMarks.length > 0
+                      ? `${day.weekday}曜の足りないもの`
+                      : `${day.weekday}曜の詳細を開く`
+                  }
+                  className={`box-border flex h-7 min-w-0 items-center justify-center gap-0.5 rounded-md border border-dashed px-1 text-base leading-none ${
+                    moveMode
+                      ? 'border-sky-200 bg-white/70'
+                      : 'border-gray-200 bg-gray-50/60'
+                  }`}
+                >
+                  {gapMarks.length === 0 ? (
+                    <span className={moveMode ? 'text-sm text-sky-300' : 'text-sm text-gray-300'} aria-hidden>
+                      —
+                    </span>
+                  ) : (
+                    gapMarks.map((mark) => (
+                      <span key={mark.label} aria-hidden>
+                        {mark.emoji}
+                      </span>
+                    ))
+                  )}
+                </button>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
       <div className="rounded-2xl border border-orange-200/80 bg-white p-3.5 shadow-sm">
-        <h2 className="text-base font-bold text-gray-800">買い物メモ</h2>
-        <p className="text-xs text-gray-500">在庫にない材料。チェックして在庫へ</p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-gray-800">買い物メモ</h2>
+            <p className="text-xs text-gray-500">在庫にない材料。チェックして在庫へ</p>
+          </div>
+          <button
+            type="button"
+            onClick={clearShoppingChecks}
+            disabled={checkedCount === 0}
+            className="shrink-0 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs text-gray-600 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-gray-100"
+          >
+            チェック解除
+          </button>
+        </div>
 
         {checkedCount > 0 && (
           <button
@@ -516,6 +746,10 @@ export function ShoppingMemoPanel({ app, customEditorId, onCustomEditorConsumed 
 
       {dayDetail !== null && (
         <DayDetailSheet app={app} dayIndex={dayDetail} onClose={() => setDayDetail(null)} />
+      )}
+
+      {weekStatsOpen && (
+        <WeekNutritionSheet app={app} onClose={() => setWeekStatsOpen(false)} />
       )}
 
       {picker && (

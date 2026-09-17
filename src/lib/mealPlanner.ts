@@ -1,5 +1,5 @@
 import { getRecipes, getRecipeSearchIndex } from '../data/recipes'
-import { matchesIngredientSearch } from './japaneseText'
+import { sameIngredientName } from './japaneseText'
 import {
   buildRecipeSearchIndex,
   indexMatchesIngredient,
@@ -19,10 +19,7 @@ interface ScoreContext {
 }
 
 function ingredientMatch(recipeIng: string, stockName: string): boolean {
-  return (
-    matchesIngredientSearch(recipeIng, stockName) ||
-    matchesIngredientSearch(stockName, recipeIng)
-  )
+  return sameIngredientName(recipeIng, stockName)
 }
 
 function scoreRecipe(recipe: Recipe, ctx: ScoreContext): number {

@@ -115,7 +115,7 @@ export function DataBackupBar({ state, onRestore }: Props) {
     showWarning &&
     createPortal(
       <div
-        className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-4 sm:items-center"
+        className="fixed inset-0 z-[80] flex items-start justify-center bg-black/45 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:items-center sm:p-4"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="delete-warning-title"

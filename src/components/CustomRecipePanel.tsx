@@ -5,6 +5,7 @@ import {
   matchesIngredientSearchAny,
   matchesJapaneseSearch,
 } from '../lib/japaneseText'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { DISH_ROLE_EMOJI, DISH_ROLES, type DishRole, type Recipe } from '../types'
 
 type App = ReturnType<typeof useAppState>
@@ -52,7 +53,7 @@ export function CustomRecipePanel({
   onPlace,
 }: Props) {
   const { state, addCustomRecipe, updateCustomRecipe, removeCustomRecipe } = app
-  const [view, setView] = useState<View>('list')
+  const [view, setView] = useState<View>('form')
   const [query, setQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -62,6 +63,7 @@ export function CustomRecipePanel({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const customRecipes = state.customRecipes ?? []
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (!open) return
@@ -76,7 +78,7 @@ export function CustomRecipePanel({
         return
       }
     }
-    setView(customRecipes.length > 0 ? 'list' : 'form')
+    setView('form')
     resetForm()
   }, [open, initialRecipeId])
 
@@ -166,7 +168,7 @@ export function CustomRecipePanel({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-4"
+      className="fixed inset-0 z-[70] flex items-start justify-center sm:items-center sm:p-4"
       role="presentation"
       onClick={onClose}
     >
@@ -176,9 +178,9 @@ export function CustomRecipePanel({
         aria-modal="true"
         aria-labelledby="custom-recipe-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-2xl"
+        className="relative z-10 flex h-[100lvh] max-h-[100lvh] w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl"
       >
-        <div className="sticky top-0 z-10 border-b border-orange-100 bg-white/95 px-4 py-2.5 backdrop-blur">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-orange-100 bg-white px-4 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
             <h2 id="custom-recipe-title" className="text-base font-bold text-gray-800">
               手入力メニュー
@@ -196,20 +198,6 @@ export function CustomRecipePanel({
             <button
               type="button"
               onClick={() => {
-                setView('list')
-                setConfirmDeleteId(null)
-              }}
-              className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium ${
-                view === 'list'
-                  ? 'bg-white text-gray-800 shadow-sm'
-                  : 'text-gray-500'
-              }`}
-            >
-              探す（{customRecipes.length}）
-            </button>
-            <button
-              type="button"
-              onClick={() => {
                 if (view === 'form' && editingId) return
                 resetForm()
                 setView('form')
@@ -224,11 +212,25 @@ export function CustomRecipePanel({
             >
               {editingId ? '編集' : '登録'}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setView('list')
+                setConfirmDeleteId(null)
+              }}
+              className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium ${
+                view === 'list'
+                  ? 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500'
+              }`}
+            >
+              探す（{customRecipes.length}）
+            </button>
           </div>
         </div>
 
         {view === 'list' ? (
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <input
               type="text"
               value={query}
@@ -310,7 +312,7 @@ export function CustomRecipePanel({
           </div>
         ) : (
           <form
-            className="min-h-0 flex-1 overflow-y-auto px-4 py-3"
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onSubmit={(e) => {
               e.preventDefault()
               save(false)

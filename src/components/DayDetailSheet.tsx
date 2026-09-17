@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { useAppState } from '../hooks/useAppState'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { DAYS } from '../types'
 import { DayDetailPanel } from './DayDetailPanel'
 
@@ -13,22 +14,21 @@ interface Props {
 }
 
 export function DayDetailSheet({ app, dayIndex, onClose }: Props) {
+  useBodyScrollLock()
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
     }
   }, [onClose])
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[55] flex flex-col justify-end sm:items-center sm:justify-center sm:p-4"
+      className="fixed inset-0 z-[55] flex flex-col items-start justify-start sm:items-center sm:justify-center sm:p-4"
       role="presentation"
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
@@ -37,11 +37,7 @@ export function DayDetailSheet({ app, dayIndex, onClose }: Props) {
         aria-modal="true"
         aria-labelledby="day-detail-title"
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-2xl"
-        style={{
-          height: 'min(96dvh, calc(100dvh - env(safe-area-inset-top) - 0.5rem))',
-          maxHeight: 'min(96dvh, calc(100dvh - env(safe-area-inset-top) - 0.5rem))',
-        }}
+        className="relative z-10 flex h-[100lvh] max-h-[100lvh] w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-2xl"
       >
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-orange-100 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <h2 id="day-detail-title" className="text-base font-bold text-gray-800">

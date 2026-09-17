@@ -151,6 +151,23 @@ export function useAppState() {
     }))
   }, [])
 
+  const clearShoppingChecks = useCallback(() => {
+    setState((prev) => {
+      const extraShoppingItems = prev.extraShoppingItems.map((item) =>
+        item.checked ? { ...item, checked: false } : item
+      )
+      const extrasChanged = extraShoppingItems.some(
+        (item, i) => item.checked !== prev.extraShoppingItems[i]?.checked
+      )
+      if (prev.shoppingCheckedNames.length === 0 && !extrasChanged) return prev
+      return {
+        ...prev,
+        shoppingCheckedNames: [],
+        extraShoppingItems,
+      }
+    })
+  }, [])
+
   const moveCheckedShoppingToInventory = useCallback(() => {
     setState((prev) => {
       const inventory = [...prev.inventory]
@@ -312,15 +329,10 @@ export function useAppState() {
 
           recordWeeklyPlanUndo(prev.weeklyPlan)
 
-          if (from.dishRole === to.dishRole) {
-            plan = plan.filter((_, i) => i !== fromIdx && i !== toIdx)
-            plan.push({ ...to, recipeId: fromRecipeId, manual: true })
-            if (toRecipeId) {
-              plan.push({ ...from, recipeId: toRecipeId, manual: true })
-            }
-          } else {
-            plan = plan.filter((_, i) => i !== fromIdx && i !== toIdx)
-            plan.push({ ...to, recipeId: fromRecipeId, manual: true })
+          plan = plan.filter((_, i) => i !== fromIdx && i !== toIdx)
+          plan.push({ ...to, recipeId: fromRecipeId, manual: true })
+          if (toRecipeId) {
+            plan.push({ ...from, recipeId: toRecipeId, manual: true })
           }
         } else if (recipeId) {
           recordWeeklyPlanUndo(prev.weeklyPlan)
@@ -623,6 +635,7 @@ export function useAppState() {
     addExtraShoppingItem,
     toggleExtraShoppingChecked,
     removeExtraShoppingItem,
+    clearShoppingChecks,
     moveCheckedShoppingToInventory,
     toggleFavorite,
     togglePreferredGenre,
